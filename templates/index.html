@@ -1,17 +1,15 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <link rel="stylesheet" type="text/css" href="css/style.css">
-    <title>Strona Pierwsza</title>
+    <link rel="stylesheet" type="text/css" href="assets/style.css">
 </head>
 <body>
     <h1>Witam na stornie uczelni</h1>
     <table>
-        <tr><th>Imie</th><th>Nazwisko</th><th>Data</th><th>Wydział</th><th>Płeć</th></tr>
-        {{range .}}
+         <tr><th>Imie</th><th>Nazwisko</th><th>Data</th><th>Wydział</th><th>Płeć</th></tr>
+         {{range .}}
             <tr><td>{{.Imie}}</td><td>{{.Nazwisko}}</td><td>{{.Data}}</td><td>{{.Wydzial}}</td><td>{{.Plec}}</td></tr>
         {{end}}
     </table>
-    <h2>e</h2>
 </body>
 </html>

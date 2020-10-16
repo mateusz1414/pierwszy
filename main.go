@@ -2,14 +2,16 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"html/template"
 	"net/http"
 	"os"
 
+	"github.com/gin-gonic/gin"
 	_ "github.com/mattn/go-sqlite3"
 )
 
-var tmpl = template.Must(template.ParseFiles("index.html"))
+var tmpl = template.Must(template.ParseFiles("templates/index.html"))
 
 type Studenci struct {
 	Imie     string
@@ -25,16 +27,16 @@ func connection() (*sql.DB, error) {
 	return sql.Open(typ, file)
 }
 
-func indexHandler(w http.ResponseWriter, r *http.Request) {
+func indexHandler(c *gin.Context) {
 	database, err := connection()
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	defer database.Close()
 	zapytanie, err := database.Query("SELECT imie,nazwisko,data_urodzenia,wydzial,plec from studenci")
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	var student = Studenci{}
@@ -44,7 +46,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		var plec int
 		err = zapytanie.Scan(&imie, &nazwisko, &data, &wydzial, &plec)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			c.Writer.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		var p string
@@ -61,18 +63,18 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		student.Plec = p
 		studenci = append(studenci, student)
 	}
-	tmpl.Execute(w, studenci)
+	c.HTML(200, "index.html", studenci)
 }
 
 func main() {
+	fmt.Println("czemy")
+	server := gin.Default()
+	server.SetHTMLTemplate(tmpl)
+	server.Static("/assets", "/css")
+	server.GET("/", indexHandler)
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "80"
+		port = "8080"
 	}
-	fs := http.FileServer(http.Dir("css"))
-	mux := http.NewServeMux()
-
-	mux.HandleFunc("/", indexHandler)
-	mux.Handle("/css/", http.StripPrefix("/css/", fs))
-	http.ListenAndServe(":"+port, mux)
+	server.Run(":" + port)
 }
