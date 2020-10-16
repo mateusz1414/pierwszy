@@ -9,8 +9,15 @@
     <table>
          <tr><th>Imie</th><th>Nazwisko</th><th>Data</th><th>Wydział</th><th>Płeć</th><th colspan="2">Usuwanie/edycja</th></tr>
          {{range .}}
-            <tr><td>{{.Imie}}</td><td>{{.Nazwisko}}</td><td>{{.Data}}</td><td>{{.Wydzial}}</td><td>{{.Plec}}</td><td><a href="/delete"><button>Usuń</button></a></td><td><a href="/edit"><button>Edycja</button></a></td></tr>
-        {{end}}
+            {{if (eq .CzyEdycja true)}}
+            <form method="post" action="/changestudent">
+                <input type="text" name="id" value="{{.Id}}" hidden>
+                <tr><td><input type="text" name="imie" value="{{.Imie}}"></td><td><input type="text" name="nazwisko" value="{{.Nazwisko}}"></td><td><input type="date" name="data" value="{{.Data}}"></td><td><input type="text" name="wydzial" value="{{.Wydzial}}"></td><td><select name="plec"><option value="0">Mężczyzna</option><option value="1" {{if (eq .Plec "kobieta" )}}selected{{end}}>Kobieta</option></select></td><td colspan="2"><input type="submit" value="Edytuj"></td></tr>
+            </form>
+            {{else}}
+            <tr><td>{{.Imie}}</td><td>{{.Nazwisko}}</td><td>{{.Data}}</td><td>{{.Wydzial}}</td><td>{{.Plec}}</td><td><a href="/delete?id={{ .Id }}"><button>Usuń</button></a></td><td><a href="/edit?id={{ .Id }}"><button>Edycja</button></a></td></tr>
+            {{end}}
+         {{end}}
         <form method="post" action="/addstudent">
             <tr><td><input type="text" name="imie"></td><td><input type="text" name="nazwisko"></td><td><input type="date" name="data"></td><td><input type="text" name="wydzial"></td><td><select name="plec"><option value="0">Mężczyzna</option><option value="1">Kobieta</option></select></td><td colspan="2"><input type="submit" value="Dodaj"></td></tr>
         </form>
