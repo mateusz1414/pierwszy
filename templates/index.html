@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
@@ -6,10 +7,13 @@
 <body>
     <h1>Witam na stornie uczelni</h1>
     <table>
-         <tr><th>Imie</th><th>Nazwisko</th><th>Data</th><th>Wydział</th><th>Płeć</th></tr>
+         <tr><th>Imie</th><th>Nazwisko</th><th>Data</th><th>Wydział</th><th>Płeć</th><th colspan="2">Usuwanie/edycja</th></tr>
          {{range .}}
-            <tr><td>{{.Imie}}</td><td>{{.Nazwisko}}</td><td>{{.Data}}</td><td>{{.Wydzial}}</td><td>{{.Plec}}</td></tr>
+            <tr><td>{{.Imie}}</td><td>{{.Nazwisko}}</td><td>{{.Data}}</td><td>{{.Wydzial}}</td><td>{{.Plec}}</td><td><a href="/delete"><button>Usuń</button></a></td><td><a href="/edit"><button>Edycja</button></a></td></tr>
         {{end}}
+        <form method="post" action="/addstudent">
+            <tr><td><input type="text" name="imie"></td><td><input type="text" name="nazwisko"></td><td><input type="date" name="data"></td><td><input type="text" name="wydzial"></td><td><select name="plec"><option value="0">Mężczyzna</option><option value="1">Kobieta</option></select></td><td colspan="2"><input type="submit" value="Dodaj"></td></tr>
+        </form>
     </table>
 </body>
 </html>

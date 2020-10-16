@@ -70,7 +70,7 @@ func main() {
 	fmt.Println("czemy")
 	server := gin.Default()
 	server.SetHTMLTemplate(tmpl)
-	server.Static("/assets", "/css")
+	server.Static("/assets", "./css")
 	server.GET("/", indexHandler)
 	port := os.Getenv("PORT")
 	if port == "" {
