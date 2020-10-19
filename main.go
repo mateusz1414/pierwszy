@@ -1,99 +1,74 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"html/template"
-	"log"
 	"os"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
-	_ "github.com/mattn/go-sqlite3"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 var tmpl = template.Must(template.ParseFiles("templates/index.html"))
 
-type Studenci struct {
-	Imie      string
-	Nazwisko  string
-	Data      string
-	Wydzial   string
-	Plec      string
-	Id        int
-	CzyEdycja bool
+type Results struct {
+	Status       int
+	TotalResults int
+	Student      []Students
 }
 
-func connection() (*sql.DB, error) {
-	typ := "sqlite3"
-	file := "./uczelnia"
-	return sql.Open(typ, file)
+type Students struct {
+	IDStudenta    int "gorm:primaryKey"
+	Imie          string
+	Nazwisko      string
+	DataUrodzenia string
+	Wydzial       string
+	Plec          string
 }
 
-func pobierzStudentow(idDoZmiany int) []Studenci {
+func connection() (*gorm.DB, error) {
+	file := "uczelnia"
+	return gorm.Open(sqlite.Open(file), &gorm.Config{})
+}
+
+func pobierzStudentow() []Students {
 	database, err := connection()
 	if err != nil {
-		fmt.Errorf("Problem z polaczeniem %s", err.Error())
-		return nil
+		panic("failed to connect database")
 	}
-	defer database.Close()
-	zapytanie, err := database.Query("SELECT imie,nazwisko,data_urodzenia,wydzial,plec,id_studenta from studenci")
-	if err != nil {
-		fmt.Errorf("Problem z polaczeniem %s", err.Error())
-		return nil
-	}
-	var student = &Studenci{}
-	var studenci = []Studenci{}
-	for zapytanie.Next() {
-		var imie, nazwisko, data, wydzial string
-		var plec, id int
-		err = zapytanie.Scan(&imie, &nazwisko, &data, &wydzial, &plec, &id)
-		if err != nil {
-			fmt.Errorf("Problem z polaczeniem %s", err.Error())
-			return nil
-		}
-		var p string
-		if plec == 0 {
-			p = "mężczyzna"
-		} else {
-			p = "kobieta"
-		}
+	//To Twoszr tabele w bazie danych wg struktury
+	database.AutoMigrate(&Students{})
+	//defer database.Close()
+	var studenci []Students
+	database.Find(&studenci)
 
-		student.Imie = imie
-		student.Nazwisko = nazwisko
-		student.Wydzial = wydzial
-		student.Data = data
-		student.Plec = p
-		student.Id = id
-		if idDoZmiany == student.Id {
-			student.CzyEdycja = true
-		} else {
-			student.CzyEdycja = false
-		}
-		studenci = append(studenci, *student)
-
-	}
 	return studenci
 }
 
 func indexHandler(c *gin.Context) {
-	studenci := pobierzStudentow(0)
-	c.HTML(200, "index.html", studenci)
+	studenci := pobierzStudentow()
+	RowsAffected := len(studenci)
+	result := Results{
+		Status:       200,
+		TotalResults: RowsAffected,
+		Student:      studenci,
+	}
+	c.JSON(200, result)
 }
 
-func studentEdit(c *gin.Context) {
-	id, iftrue := c.GetQuery("id")
-	idNumber, err := strconv.Atoi(id)
+func studentDelete(c *gin.Context) {
+	id, _ := c.GetQuery("id")
+	database, err := connection()
 	if err != nil {
-		log.Fatal("Problem z zamiana")
+		fmt.Errorf("Problem z polaczeniem %s", err.Error())
 		return
 	}
-	if iftrue {
-		studenci := pobierzStudentow(idNumber)
-		c.HTML(200, "index.html", studenci)
-	}
+	database.Delete(&Students{}, id)
+	c.Redirect(301, "/")
 }
 
+/*
 func studentChange(c *gin.Context) {
 	id := c.PostForm("id")
 	imie := c.PostForm("imie")
@@ -116,21 +91,14 @@ func studentChange(c *gin.Context) {
 
 }
 
-func studentDelete(c *gin.Context) {
-	id, _ := c.GetQuery("id")
-	database, err := connection()
-	if err != nil {
-		fmt.Errorf("Problem z polaczeniem %s", err.Error())
-		return
-	}
-	zapytanie, err := database.Prepare("DELETE FROM studenci WHERE id_studenta=?")
-	if err != nil {
-		fmt.Errorf("Problem z zapytaniem %s", err.Error())
-		return
-	}
-	zapytanie.Exec(id)
-	c.Redirect(301, "/")
-}
+//co tu wiele mówić  tworzysz studenta wg structury Students patrz linijka 52 nie deklarujesz id samo doda
+//funkcja na dodawanie to database.Create(&student)
+//i przekierowanie
+
+//edycja robisz tak samo studenta ale pustą zmienną typu Student var student =&Student{} powinno zadzialać jak nie to kombinuj z & i klamrami
+//potem pobierasz dane do tej zmiennej database.First(&student,id) First działa troche jak fetch
+//zmieniasz co chcesz student.Imie="Darek"
+//i zapisujesz db.Save(&student)
 
 func studentAdd(c *gin.Context) {
 	imie := c.PostForm("imie")
@@ -151,17 +119,17 @@ func studentAdd(c *gin.Context) {
 	}
 	c.Redirect(301, "/")
 
-}
+}*/
 
 func main() {
 	server := gin.Default()
 	server.SetHTMLTemplate(tmpl)
 	server.Static("/assets", "./css")
 	server.GET("/", indexHandler)
-	server.GET("/edit", studentEdit)
 	server.GET("/delete", studentDelete)
-	server.POST("/changestudent", studentChange)
-	server.POST("/addstudent", studentAdd)
+	/*
+		server.POST("/changestudent", studentChange)
+		server.POST("/addstudent", studentAdd)*/
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
