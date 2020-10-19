@@ -108,9 +108,45 @@ func studentChange(c *gin.Context) {
 	}
 	zapytanie, _ := database.Prepare("UPDATE studenci SET imie=?,nazwisko=?,wydzial=?,data_urodzenia=?,plec=? WHERE id_studenta=?")
 	_, err = zapytanie.Exec(imie, nazwisko, wydzial, data, plec, id)
-	fmt.Println("czy to tu!!!!!!!!!!!!!!!!!!!!!!!!!")
 	if err != nil {
-		//fmt.Errorf("Problem z zapytaniem %s", err.Error())
+		fmt.Errorf("Problem z zapytaniem %s", err.Error())
+		return
+	}
+	c.Redirect(301, "/")
+
+}
+
+func studentDelete(c *gin.Context) {
+	id, _ := c.GetQuery("id")
+	database, err := connection()
+	if err != nil {
+		fmt.Errorf("Problem z polaczeniem %s", err.Error())
+		return
+	}
+	zapytanie, err := database.Prepare("DELETE FROM studenci WHERE id_studenta=?")
+	if err != nil {
+		fmt.Errorf("Problem z zapytaniem %s", err.Error())
+		return
+	}
+	zapytanie.Exec(id)
+	c.Redirect(301, "/")
+}
+
+func studentAdd(c *gin.Context) {
+	imie := c.PostForm("imie")
+	nazwisko := c.PostForm("nazwisko")
+	wydzial := c.PostForm("wydzial")
+	data := c.PostForm("data")
+	plec := c.PostForm("plec")
+	database, err := connection()
+	if err != nil {
+		fmt.Errorf("Problem z polaczeniem %s", err.Error())
+		return
+	}
+	zapytanie, _ := database.Prepare("INSERT INTO studenci(imie, nazwisko, data_urodzenia, wydzial, plec) VALUES(?,?,?,?,?)")
+	_, err = zapytanie.Exec(imie, nazwisko, data, wydzial, plec)
+	if err != nil {
+		fmt.Errorf("Problem z zapytaniem %s", err.Error())
 		return
 	}
 	c.Redirect(301, "/")
@@ -118,13 +154,14 @@ func studentChange(c *gin.Context) {
 }
 
 func main() {
-	fmt.Println("czemy")
 	server := gin.Default()
 	server.SetHTMLTemplate(tmpl)
 	server.Static("/assets", "./css")
 	server.GET("/", indexHandler)
 	server.GET("/edit", studentEdit)
+	server.GET("/delete", studentDelete)
 	server.POST("/changestudent", studentChange)
+	server.POST("/addstudent", studentAdd)
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
