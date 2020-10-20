@@ -19,7 +19,7 @@ type Results struct {
 }
 
 type Students struct {
-	IDStudenta    int "gorm:primaryKey"
+	IDStudenta    int "gorm:primaryKey;autoIncrement"
 	Imie          string
 	Nazwisko      string
 	DataUrodzenia string
@@ -38,7 +38,7 @@ func pobierzStudentow() []Students {
 		panic("failed to connect database")
 	}
 	//To Twoszr tabele w bazie danych wg struktury
-	database.AutoMigrate(&Students{})
+	//database.AutoMigrate(&Students{})
 	//defer database.Close()
 	var studenci []Students
 	database.Find(&studenci)
@@ -68,58 +68,67 @@ func studentDelete(c *gin.Context) {
 	c.Redirect(301, "/")
 }
 
-/*
 func studentChange(c *gin.Context) {
-	id := c.PostForm("id")
-	imie := c.PostForm("imie")
-	nazwisko := c.PostForm("nazwisko")
-	wydzial := c.PostForm("wydzial")
-	data := c.PostForm("data")
-	plec := c.PostForm("plec")
 	database, err := connection()
 	if err != nil {
 		fmt.Errorf("Problem z polaczeniem %s", err.Error())
 		return
 	}
-	zapytanie, _ := database.Prepare("UPDATE studenci SET imie=?,nazwisko=?,wydzial=?,data_urodzenia=?,plec=? WHERE id_studenta=?")
-	_, err = zapytanie.Exec(imie, nazwisko, wydzial, data, plec, id)
-	if err != nil {
-		fmt.Errorf("Problem z zapytaniem %s", err.Error())
-		return
+	id := c.GetHeader("id")
+	imie := c.GetHeader("imie")
+	nazwisko := c.GetHeader("nazwisko")
+	wydzial := c.GetHeader("wydzial")
+	data := c.GetHeader("data")
+	plec := c.GetHeader("plec")
+	if id == "" {
+		c.Redirect(301, "/")
 	}
+	var user Students
+	database.First(&user, id)
+	if imie != "" {
+		user.Imie = imie
+	}
+	if nazwisko != "" {
+		user.Nazwisko = nazwisko
+	}
+	if wydzial != "" {
+		user.Wydzial = wydzial
+	}
+	if data != "" {
+		user.DataUrodzenia = data
+	}
+	if plec != "" {
+		user.Plec = plec
+	}
+	database.Where("id_studenta=?", id).Save(&user)
 	c.Redirect(301, "/")
 
 }
 
-//co tu wiele mówić  tworzysz studenta wg structury Students patrz linijka 52 nie deklarujesz id samo doda
-//funkcja na dodawanie to database.Create(&student)
-//i przekierowanie
-
-//edycja robisz tak samo studenta ale pustą zmienną typu Student var student =&Student{} powinno zadzialać jak nie to kombinuj z & i klamrami
-//potem pobierasz dane do tej zmiennej database.First(&student,id) First działa troche jak fetch
-//zmieniasz co chcesz student.Imie="Darek"
-//i zapisujesz db.Save(&student)
-
 func studentAdd(c *gin.Context) {
-	imie := c.PostForm("imie")
-	nazwisko := c.PostForm("nazwisko")
-	wydzial := c.PostForm("wydzial")
-	data := c.PostForm("data")
-	plec := c.PostForm("plec")
+	imie := c.GetHeader("imie")
+	nazwisko := c.GetHeader("nazwisko")
+	wydzial := c.GetHeader("wydzial")
+	data := c.GetHeader("data")
+	plec := c.GetHeader("plec")
+	user := Students{
+		Imie:          imie,
+		Nazwisko:      nazwisko,
+		Wydzial:       wydzial,
+		DataUrodzenia: data,
+		Plec:          plec,
+	}
 	database, err := connection()
 	if err != nil {
 		fmt.Errorf("Problem z polaczeniem %s", err.Error())
 		return
 	}
-	zapytanie, _ := database.Prepare("INSERT INTO studenci(imie, nazwisko, data_urodzenia, wydzial, plec) VALUES(?,?,?,?,?)")
-	_, err = zapytanie.Exec(imie, nazwisko, data, wydzial, plec)
-	if err != nil {
-		fmt.Errorf("Problem z zapytaniem %s", err.Error())
-		return
-	}
+
+	database.Select("imie", "nazwisko", "data_urodzenia", "wydzial", "plec").Create(&user)
+	fmt.Println(user.IDStudenta)
 	c.Redirect(301, "/")
 
-}*/
+}
 
 func main() {
 	server := gin.Default()
@@ -127,9 +136,8 @@ func main() {
 	server.Static("/assets", "./css")
 	server.GET("/", indexHandler)
 	server.GET("/delete", studentDelete)
-	/*
-		server.POST("/changestudent", studentChange)
-		server.POST("/addstudent", studentAdd)*/
+	server.POST("/changestudent", studentChange)
+	server.POST("/addstudent", studentAdd)
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
