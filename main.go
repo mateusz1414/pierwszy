@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"html/template"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -10,7 +9,6 @@ import (
 	"gorm.io/gorm"
 )
 
-var tmpl = template.Must(template.ParseFiles("templates/index.html"))
 
 type Results struct {
 	Status       int
@@ -132,7 +130,6 @@ func studentAdd(c *gin.Context) {
 
 func main() {
 	server := gin.Default()
-	server.SetHTMLTemplate(tmpl)
 	server.Static("/assets", "./css")
 	server.GET("/", indexHandler)
 	server.GET("/delete", studentDelete)
