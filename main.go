@@ -9,20 +9,26 @@ import (
 	"gorm.io/gorm"
 )
 
-
 type Results struct {
 	Status       int
 	TotalResults int
 	Student      []Students
 }
 
+type Outs struct {
+	Status     int
+	Message    string
+	UpdateRows int64
+	ErrorValue string
+}
+
 type Students struct {
-	IDStudenta    int "gorm:primaryKey;autoIncrement"
-	Imie          string
-	Nazwisko      string
-	DataUrodzenia string
-	Wydzial       string
-	Plec          string
+	IDStudenta    int    `json:"idstudenta"`
+	Imie          string `json:"imiestudenta"`
+	Nazwisko      string `json:"nazwiskostudenta"`
+	DataUrodzenia string `json:"datastudenta"`
+	Wydzial       string `json:"wydzialstudenta"`
+	Plec          string `json:"plecstudenta"`
 }
 
 func connection() (*gorm.DB, error) {
@@ -56,85 +62,97 @@ func indexHandler(c *gin.Context) {
 }
 
 func studentDelete(c *gin.Context) {
-	id, _ := c.GetQuery("id")
+	var usunSe = Students{}
+	err := c.ShouldBindJSON(&usunSe)
+	if err != nil {
+		outs := Outs{
+			Status:     400,
+			Message:    "Podaj poprawny format danych",
+			UpdateRows: 0,
+			ErrorValue: err.Error(),
+		}
+		c.JSON(400, outs)
+		return
+	}
 	database, err := connection()
 	if err != nil {
 		fmt.Errorf("Problem z polaczeniem %s", err.Error())
 		return
 	}
-	database.Delete(&Students{}, id)
-	c.Redirect(301, "/")
+	result := database.Delete(&Students{}, &usunSe)
+	if result.Error != nil {
+		c.JSON(400, Outs{
+			Status:     400,
+			Message:    "Problem z usunieciem użytkownika",
+			UpdateRows: result.RowsAffected,
+			ErrorValue: result.Error.Error(),
+		})
+	}
+	c.JSON(200, Outs{
+		Status:     200,
+		Message:    "Usunieto użytkownika",
+		UpdateRows: result.RowsAffected,
+		ErrorValue: "",
+	})
 }
 
 func studentChange(c *gin.Context) {
-	database, err := connection()
-	if err != nil {
-		fmt.Errorf("Problem z polaczeniem %s", err.Error())
-		return
-	}
-	id := c.GetHeader("id")
-	imie := c.GetHeader("imie")
-	nazwisko := c.GetHeader("nazwisko")
-	wydzial := c.GetHeader("wydzial")
-	data := c.GetHeader("data")
-	plec := c.GetHeader("plec")
-	if id == "" {
-		c.Redirect(301, "/")
-	}
-	var user Students
-	database.First(&user, id)
-	if imie != "" {
-		user.Imie = imie
-	}
-	if nazwisko != "" {
-		user.Nazwisko = nazwisko
-	}
-	if wydzial != "" {
-		user.Wydzial = wydzial
-	}
-	if data != "" {
-		user.DataUrodzenia = data
-	}
-	if plec != "" {
-		user.Plec = plec
-	}
-	database.Where("id_studenta=?", id).Save(&user)
-	c.Redirect(301, "/")
+	//var edytujSe := Students{}
+	//err :=
+	//database, err := connection()
+	//if err != nil {
+	//	fmt.Errorf("Problem z polaczeniem %s", err.Error())
+	//	return
+	//}
+
+	//database.Where("id_studenta=?", id).Save(&user)
+	//c.Redirect(301, "/")
 
 }
 
 func studentAdd(c *gin.Context) {
-	imie := c.GetHeader("imie")
-	nazwisko := c.GetHeader("nazwisko")
-	wydzial := c.GetHeader("wydzial")
-	data := c.GetHeader("data")
-	plec := c.GetHeader("plec")
-	user := Students{
-		Imie:          imie,
-		Nazwisko:      nazwisko,
-		Wydzial:       wydzial,
-		DataUrodzenia: data,
-		Plec:          plec,
+	var dodajSe = Students{}
+	err := c.ShouldBindJSON(&dodajSe)
+	if err != nil {
+		outs := Outs{
+			Status:     400,
+			Message:    "Podaj poprawny format danych",
+			UpdateRows: 0,
+			ErrorValue: err.Error(),
+		}
+		c.JSON(400, outs)
+		return
 	}
 	database, err := connection()
 	if err != nil {
 		fmt.Errorf("Problem z polaczeniem %s", err.Error())
 		return
 	}
-
-	database.Select("imie", "nazwisko", "data_urodzenia", "wydzial", "plec").Create(&user)
-	fmt.Println(user.IDStudenta)
-	c.Redirect(301, "/")
+	result := database.Select("imie", "nazwisko", "data_urodzenia", "wydzial", "plec").Create(&dodajSe)
+	if result.Error != nil {
+		//sprawdz 400 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		c.JSON(400, Outs{
+			Status:     400,
+			Message:    "Problem z dodaniem użytkownika",
+			UpdateRows: result.RowsAffected,
+			ErrorValue: result.Error.Error(),
+		})
+	}
+	c.JSON(200, Outs{
+		Status:     200,
+		Message:    "Dodano użytkownika",
+		UpdateRows: result.RowsAffected,
+		ErrorValue: "",
+	})
 
 }
 
 func main() {
 	server := gin.Default()
-	server.Static("/assets", "./css")
 	server.GET("/", indexHandler)
-	server.GET("/delete", studentDelete)
-	server.POST("/changestudent", studentChange)
-	server.POST("/addstudent", studentAdd)
+	server.DELETE("/", studentDelete)
+	server.PUT("/", studentChange)
+	server.POST("/", studentAdd)
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
