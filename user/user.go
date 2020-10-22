@@ -4,11 +4,17 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"time"
+
+	"github.com/dgrijalva/jwt-go"
 
 	"gorm.io/gorm"
 )
 
+var secretcode = []byte("mysecretcode")
+
 type Users struct {
+	Iduser          int
 	Login           string `json:"login"`
 	Hashpassword    string
 	Password        string `json:"password"`
@@ -43,4 +49,31 @@ func (s *Users) RegisterValidate(database gorm.DB) error {
 
 func (s *Users) Authentication() {
 
+}
+
+func (s *Users) GetAuthToken() (string, error) {
+	claims := jwt.MapClaims{}
+	claims["userid"] = s.Iduser
+	claims["time"] = time.Now().Unix()
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &claims)
+	authToken, err := token.SignedString(secretcode)
+	return authToken, err
+}
+
+func IsTokenValid(token string) (bool, string) {
+	tok, err := jwt.Parse(token, func(tok *jwt.Token) (interface{}, error) {
+		if _, ok := tok.Method.(*jwt.SigningMethodHMAC); ok == false {
+			return nil, fmt.Errorf("Token nie jest walidowany %v", tok.Header["alg"])
+		}
+		return secretcode, nil
+	})
+	if err != nil {
+		return false, ""
+	}
+	if claims, ok := tok.Claims.(jwt.MapClaims); ok && tok.Valid && claims["time"].(int64)+300 < time.Now().Unix() {
+		userid := claims["userid"]
+		return true, userid.(string)
+	} else {
+		return false, ""
+	}
 }

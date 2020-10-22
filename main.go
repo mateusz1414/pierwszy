@@ -22,7 +22,7 @@ func main() {
 	server.Use(dbMiddleware(*database))
 	student := server.Group("student")
 	{
-		student.GET("/", studenci.IndexHandler)
+		student.GET("/", authMiddleware(), studenci.IndexHandler)
 		student.DELETE("/", studenci.StudentDelete)
 		student.PUT("/", studenci.StudentChange)
 		student.POST("/", studenci.StudentAdd)
@@ -52,5 +52,12 @@ func dbMiddleware(db gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Set("db", db)
 		c.Next()
+	}
+}
+
+func authMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		bearer := c.GetHeader("Authorization")
+		fmt.Println(bearer)
 	}
 }
