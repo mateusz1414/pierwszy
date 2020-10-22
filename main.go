@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"log"
+	"os"
+	"pierwszy/logowanierejestracja"
 	"pierwszy/studenci"
 
 	"github.com/gin-gonic/gin"
@@ -11,23 +12,25 @@ import (
 	"gorm.io/gorm"
 )
 
-
-
-
 func main() {
-	database,err:=connection()
-	if err!=nil{
+	database, err := connection()
+	if err != nil {
 		log.Fatal("Problem z baza")
 		return
 	}
 	server := gin.Default()
 	server.Use(dbMiddleware(*database))
-	student:=server.Group("student")
+	student := server.Group("student")
 	{
 		student.GET("/", studenci.IndexHandler)
 		student.DELETE("/", studenci.StudentDelete)
 		student.PUT("/", studenci.StudentChange)
 		student.POST("/", studenci.StudentAdd)
+	}
+	user := server.Group("user")
+	{
+		user.POST("login", logowanierejestracja.Login)
+		user.POST("register", logowanierejestracja.Register)
 	}
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -36,18 +39,18 @@ func main() {
 	server.Run(":" + port)
 }
 
-func connection() (*gorm.DB,error) {
+func connection() (*gorm.DB, error) {
 	file := "uczelnia"
-	db,err:=gorm.Open(sqlite.Open(file), &gorm.Config{})
-	if err!=nil{
-		return nil,fmt.Errorf("Blad polaczenia z baza danych: %v",err.Error())
+	db, err := gorm.Open(sqlite.Open(file), &gorm.Config{})
+	if err != nil {
+		return nil, fmt.Errorf("Blad polaczenia z baza danych: %v", err.Error())
 	}
-	return db,nil
+	return db, nil
 }
 
-func dbMiddleware(db gorm.DB)gin.HandlerFunc{
-	return func(c *gin.Context){
-		c.Set("db",db)
+func dbMiddleware(db gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Set("db", db)
 		c.Next()
 	}
 }
