@@ -47,8 +47,16 @@ func (s *Users) RegisterValidate(database gorm.DB) error {
 
 }
 
-func (s *Users) Authentication() {
-
+func (s *Users) Authentication(database gorm.DB) error {
+	var count int64
+	hash := md5.Sum([]byte(s.Password))
+	s.Hashpassword = hex.EncodeToString(hash[:])
+	database.Table("users").Where("login=? and hashpassword=?", s.Login, s.Hashpassword).Count(&count)
+	if count == 0 {
+		return fmt.Errorf("Taki urzytkownik nie istnieje")
+		fmt.Println(s.Password)
+	}
+	return nil
 }
 
 func (s *Users) GetAuthToken() (string, error) {
