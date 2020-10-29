@@ -6,6 +6,8 @@ import (
 	"os"
 	"pierwszy/logowanierejestracja"
 	"pierwszy/studenci"
+	"pierwszy/user"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/sqlite"
@@ -22,10 +24,10 @@ func main() {
 	server.Use(dbMiddleware(*database))
 	student := server.Group("student")
 	{
-		student.GET("/", authMiddleware(), studenci.IndexHandler)
-		student.DELETE("/", studenci.StudentDelete)
-		student.PUT("/", studenci.StudentChange)
-		student.POST("/", studenci.StudentAdd)
+		student.GET("/", studenci.IndexHandler)
+		student.DELETE("/", authMiddleware(), studenci.StudentDelete)
+		student.PUT("/", authMiddleware(), studenci.StudentChange)
+		student.POST("/", authMiddleware(), studenci.StudentAdd)
 	}
 	user := server.Group("user")
 	{
@@ -58,6 +60,26 @@ func dbMiddleware(db gorm.DB) gin.HandlerFunc {
 func authMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		bearer := c.GetHeader("Authorization")
-		fmt.Println(bearer)
+		split := strings.Split(bearer, "Bearer ")
+		if len(split) < 2 {
+			c.JSON(401, gin.H{
+				"error": "unauthenticated",
+			})
+			c.Abort()
+			return
+		}
+		token := split[1]
+		isValid, userId := user.IsTokenValid(token)
+
+		if isValid == false {
+			c.JSON(401, gin.H{
+				"error": "unauthenticated",
+			})
+			c.Abort()
+		} else {
+			c.Set("userid", userId)
+			c.Next()
+		}
+
 	}
 }

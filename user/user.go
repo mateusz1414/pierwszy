@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -54,7 +55,6 @@ func (s *Users) Authentication(database gorm.DB) error {
 	database.Table("users").Where("login=? and hashpassword=?", s.Login, s.Hashpassword).Count(&count)
 	if count == 0 {
 		return fmt.Errorf("Taki urzytkownik nie istnieje")
-		fmt.Println(s.Password)
 	}
 	return nil
 }
@@ -78,9 +78,9 @@ func IsTokenValid(token string) (bool, string) {
 	if err != nil {
 		return false, ""
 	}
-	if claims, ok := tok.Claims.(jwt.MapClaims); ok && tok.Valid && claims["time"].(int64)+300 < time.Now().Unix() {
+	if claims, ok := tok.Claims.(jwt.MapClaims); ok && tok.Valid && claims["time"].(float64)+300 > float64(time.Now().Unix()) {
 		userid := claims["userid"]
-		return true, userid.(string)
+		return true, strconv.Itoa(int(userid.(float64)))
 	} else {
 		return false, ""
 	}

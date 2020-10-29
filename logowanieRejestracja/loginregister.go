@@ -27,17 +27,29 @@ func Login(c *gin.Context) {
 	err := c.ShouldBindJSON(&userData)
 	if err != nil {
 		outFunc(400, "Niepoprawny format danych", err.Error(), c)
+		return
 	}
 	db, DBbool := c.Get("db")
 	if DBbool == false {
 		outFunc(500, "Nie znaleziono bazy danych", "Database error", c)
+		return
 	}
 	database := db.(gorm.DB)
 	err = userData.Authentication(database)
 	if err != nil {
 		outFunc(400, "Nie udało się zalogować", err.Error(), c)
 	} else {
-		outFunc(200, "Poprawnie zalogowano", "", c)
+		token, err := userData.GetAuthToken()
+		if err != nil {
+			outFunc(500, "Problem z pobraniem jwt", err.Error(), c)
+		} else {
+			c.JSON(200, gin.H{
+				"status":    200,
+				"Message":   "Poprawnie zalogowano",
+				"ErrorCode": "",
+				"AuthToken": token,
+			})
+		}
 	}
 }
 
@@ -46,10 +58,12 @@ func Register(c *gin.Context) {
 	err := c.ShouldBindJSON(&userData)
 	if err != nil {
 		outFunc(400, "Niepoprawny format danych", err.Error(), c)
+		return
 	}
 	db, DBbool := c.Get("db")
 	if DBbool == false {
 		outFunc(500, "Nie znaleziono bazy danych", "Database error", c)
+		return
 	}
 	database := db.(gorm.DB)
 	err = userData.RegisterValidate(database)
