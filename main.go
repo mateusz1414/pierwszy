@@ -39,7 +39,7 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
-	server.Run(":" + port)
+	server.Run(":8080")
 }
 
 func connection() (*gorm.DB, error) {
