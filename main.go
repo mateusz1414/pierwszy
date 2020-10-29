@@ -11,8 +11,8 @@ import (
 	"github.com/mateusz1414/pierwszy/user"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/sqlite"
 )
 
 func main() {
@@ -44,7 +44,7 @@ func main() {
 
 func connection() (*gorm.DB, error) {
 	file := "uczelnia"
-	db, err := gorm.Open(sqlite.Open(file), &gorm.Config{})
+	db, err := gorm.Open("sqlite3", file)
 	if err != nil {
 		return nil, fmt.Errorf("Blad polaczenia z baza danych: %v", err.Error())
 	}

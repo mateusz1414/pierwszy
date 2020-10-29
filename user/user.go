@@ -9,7 +9,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 
-	"gorm.io/gorm"
+	"github.com/jinzhu/gorm"
 )
 
 var secretcode = []byte("mysecretcode")

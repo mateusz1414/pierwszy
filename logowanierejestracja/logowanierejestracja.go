@@ -4,7 +4,7 @@ import (
 	"github.com/mateusz1414/pierwszy/user"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
+	"github.com/jinzhu/gorm"
 )
 
 type Outs struct {
