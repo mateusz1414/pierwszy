@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"pierwszy/logowanierejestracja"
-	"pierwszy/studenci"
-	"pierwszy/user"
 	"strings"
+
+	"github.com/mateusz1414/pierwszy/logowanierejestracja"
+	"github.com/mateusz1414/pierwszy/studenci"
+	"github.com/mateusz1414/pierwszy/user"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/sqlite"
