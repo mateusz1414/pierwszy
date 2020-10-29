@@ -1,10 +1,3 @@
 module github.com/mateusz1414/pierwszy
 
-go 1.12
-
-require (
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/gin-gonic/gin v1.6.3
-	gorm.io/driver/sqlite v1.1.3 // indirect
-	gorm.io/gorm v1.20.5
-)
+go 1.15
