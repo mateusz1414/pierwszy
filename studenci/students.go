@@ -91,7 +91,7 @@ func StudentDelete(c *gin.Context) {
 		return
 	}
 	database := db.(gorm.DB)
-	result := database.Delete(&Students{}, usunSe.IDStudenta)
+	result := database.Where("id_studenta=?", usunSe.IDStudenta).Delete(&Students{})
 	if result.Error != nil || result.RowsAffected == 0 {
 		outFunc(400, "Problem z usunięciem studenta", result.RowsAffected, result.Error.Error(), c)
 		return
