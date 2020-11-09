@@ -6,9 +6,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/mateusz1414/pierwszy/logowanierejestracja"
-	"github.com/mateusz1414/pierwszy/studenci"
-	"github.com/mateusz1414/pierwszy/user"
+	"students/loginandregister"
+	"students/students"
+	"students/user"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
@@ -25,15 +25,15 @@ func main() {
 	server.Use(dbMiddleware(*database))
 	student := server.Group("student")
 	{
-		student.GET("/", studenci.IndexHandler)
-		student.DELETE("/", authMiddleware(), studenci.StudentDelete)
-		student.PUT("/", authMiddleware(), studenci.StudentChange)
-		student.POST("/", authMiddleware(), studenci.StudentAdd)
+		student.GET("/", students.IndexHandler)
+		student.DELETE("/:studentID", authMiddleware(), students.StudentDelete)
+		student.PUT("/:studentID", authMiddleware(), students.StudentChange)
+		student.POST("/", authMiddleware(), students.StudentAdd)
 	}
 	user := server.Group("user")
 	{
-		user.POST("login", logowanierejestracja.Login)
-		user.POST("register", logowanierejestracja.Register)
+		user.POST("login", loginandregister.Login)
+		user.POST("register", loginandregister.Register)
 	}
 	port := os.Getenv("PORT")
 	if port == "" {

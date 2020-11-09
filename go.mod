@@ -1,4 +1,4 @@
-module github.com/mateusz1414/pierwszy
+module students
 
 go 1.12
 

@@ -1,6 +1,8 @@
-package studenci
+package students
 
 import (
+	"strconv"
+
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
 )
@@ -79,19 +81,30 @@ func IndexHandler(c *gin.Context) {
 }
 
 func StudentDelete(c *gin.Context) {
-	var usunSe = Students{}
-	err := c.ShouldBindJSON(&usunSe)
+	var student = Students{}
+	studentIDString, isEmpty := c.Params.Get("studentID")
+	if !isEmpty {
+		outFunc(400, "Nie podano id studenta", 0, "incorrect student id", c)
+		return
+	}
+	studentIdInt, err := strconv.Atoi(studentIDString)
+	if err != nil {
+		outFunc(500, "Nieoczekiwany błąd serwera", 0, err.Error(), c)
+		return
+	}
+	err = c.ShouldBindJSON(&student)
 	if err != nil {
 		outFunc(400, "Podaj poprawny format danych", 0, err.Error(), c)
 		return
 	}
+	student.IDStudenta = studentIdInt
 	db, dbBool := c.Get("db")
 	if dbBool == false {
 		outFunc(500, "Nie znaleziono bazy danych", 0, "Database error", c)
 		return
 	}
 	database := db.(gorm.DB)
-	result := database.Where("id_studenta=?", usunSe.IDStudenta).Delete(&Students{})
+	result := database.Delete(&Students{}, student.IDStudenta)
 	if result.Error != nil || result.RowsAffected == 0 {
 		outFunc(400, "Problem z usunięciem studenta", result.RowsAffected, result.Error.Error(), c)
 		return
@@ -100,34 +113,41 @@ func StudentDelete(c *gin.Context) {
 }
 
 func StudentChange(c *gin.Context) {
-	edytujSe := Students{}
-	err := c.ShouldBindJSON(&edytujSe)
+	newStudent := Students{}
+	studentIDString, isEmpty := c.Params.Get("studentID")
+	if !isEmpty {
+		outFunc(400, "Nie podano id studenta", 0, "incorrect student id", c)
+		return
+	}
+	studentIdInt, err := strconv.Atoi(studentIDString)
+	if err != nil {
+		outFunc(500, "Nieoczekiwany błąd serwera", 0, err.Error(), c)
+		return
+	}
+	err = c.ShouldBindJSON(&newStudent)
 	if err != nil {
 		outFunc(400, "Podaj poprawny format danych", 0, err.Error(), c)
 		return
 	}
+	newStudent.IDStudenta = studentIdInt
 	db, dbBool := c.Get("db")
 	if dbBool == false {
 		outFunc(500, "Nie znaleziono bazy danych", 0, "Database error", c)
 		return
 	}
 	database := db.(gorm.DB)
-	student := Students{}
-	if edytujSe.IDStudenta == 0 {
-		outFunc(400, "Niepoprawne idstudenta", 0, "Invalid primarykey", c)
-		return
-	}
-	database.First(&student, edytujSe.IDStudenta)
-	student.compare(&edytujSe)
+	oldStudent := Students{}
+	database.First(&oldStudent, newStudent.IDStudenta)
+	oldStudent.compare(&newStudent)
 
-	result := database.Where("id_studenta=?", student.IDStudenta).Save(&student)
+	result := database.Model(oldStudent).Where("id_studenta=?", oldStudent.IDStudenta).Save(&oldStudent)
 	outFunc(200, "Zmieniono dane studenta", result.RowsAffected, "", c)
 
 }
 
 func StudentAdd(c *gin.Context) {
-	var dodajSe = Students{}
-	err := c.ShouldBindJSON(&dodajSe)
+	var student = Students{}
+	err := c.ShouldBindJSON(&student)
 	if err != nil {
 		outFunc(400, "Podaj poprawny format danych", 0, err.Error(), c)
 		return
@@ -138,9 +158,8 @@ func StudentAdd(c *gin.Context) {
 		return
 	}
 	database := db.(gorm.DB)
-	result := database.Select("imie", "nazwisko", "data_urodzenia", "wydzial", "plec").Create(&dodajSe)
+	result := database.Select("imie", "nazwisko", "data_urodzenia", "wydzial", "plec").Create(&student)
 	if result.Error != nil {
-		//sprawdz 400 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		outFunc(400, "Problem z dodaniem studenta", result.RowsAffected, result.Error.Error(), c)
 	}
 	outFunc(200, "Dodano studenta", result.RowsAffected, "", c)

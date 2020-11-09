@@ -1,7 +1,7 @@
-package logowanierejestracja
+package loginandregister
 
 import (
-	"github.com/mateusz1414/pierwszy/user"
+	"students/user"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
