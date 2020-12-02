@@ -53,6 +53,7 @@ func connection() (*gorm.DB, error) {
 
 func dbMiddleware(db gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Set("db", db)
 		c.Next()
 	}
