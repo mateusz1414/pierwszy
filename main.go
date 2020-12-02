@@ -24,9 +24,7 @@ func main() {
 	}
 	server := gin.Default()
 	server.Use(dbMiddleware(*database))
-	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://google.com"}
-	server.Use(cors.New(config))
+	server.Use(cors.Default())
 	student := server.Group("student")
 	{
 		student.GET("/", students.IndexHandler)
