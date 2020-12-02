@@ -23,11 +23,11 @@ func main() {
 		return
 	}
 	server := gin.Default()
-	server.Use(dbMiddleware(*database))
+	server.Use(dbMiddleware(database))
 	server.Use(cors.Default())
 	student := server.Group("student")
 	{
-		student.GET("/", students.IndexHandler)
+		student.GET("/:studentID", students.GetStudent)
 		student.DELETE("/:studentID", authMiddleware(), students.StudentDelete)
 		student.PUT("/:studentID", authMiddleware(), students.StudentChange)
 		student.POST("/", authMiddleware(), students.StudentAdd)
@@ -53,7 +53,7 @@ func connection() (*gorm.DB, error) {
 	return db, nil
 }
 
-func dbMiddleware(db gorm.DB) gin.HandlerFunc {
+func dbMiddleware(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Set("db", db)
 		c.Next()
