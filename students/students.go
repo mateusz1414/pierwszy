@@ -117,7 +117,7 @@ func StudentDelete(c *gin.Context) {
 		outFunc(500, "Nie znaleziono bazy danych", 0, "Database error", c)
 		return
 	}
-	database := db.(gorm.DB)
+	database := db.(*gorm.DB)
 	result := database.Where("student_id=?", student.StudentID).Delete(&Student{})
 	if result.Error != nil || result.RowsAffected == 0 {
 		outFunc(400, "Problem z usunięciem studenta", result.RowsAffected, result.Error.Error(), c)
@@ -149,7 +149,7 @@ func StudentChange(c *gin.Context) {
 		outFunc(500, "Nie znaleziono bazy danych", 0, "Database error", c)
 		return
 	}
-	database := db.(gorm.DB)
+	database := db.(*gorm.DB)
 
 	result := database.Model(newStudent).Where("student_id=?", newStudent.StudentID).Updates(newStudent)
 	outFunc(200, "Zmieniono dane studenta", result.RowsAffected, "", c)
@@ -168,8 +168,8 @@ func StudentAdd(c *gin.Context) {
 		outFunc(500, "Nie znaleziono bazy danych", 0, "Database error", c)
 		return
 	}
-	database := db.(gorm.DB)
-	result := database.Select("imie", "nazwisko", "data_urodzenia", "wydzial", "plec").Create(&student)
+	database := db.(*gorm.DB)
+	result := database.Select("name", "surname", "date_of_brith", "departament", "sex").Create(&student)
 	if result.Error != nil {
 		outFunc(400, "Problem z dodaniem studenta", result.RowsAffected, result.Error.Error(), c)
 	}
