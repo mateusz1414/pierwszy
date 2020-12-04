@@ -24,11 +24,10 @@ func main() {
 	}
 	server := gin.Default()
 	config := cors.DefaultConfig()
-        config.AllowAllOrigins = true
+	config.AllowAllOrigins = true
 	config.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization"}
-        server.Use(cors.New(config))
+	server.Use(cors.New(config))
 	server.Use(dbMiddleware(database))
-	server.Use(cors.Default())
 	student := server.Group("student")
 	{
 		student.GET("/:studentID", students.GetStudent)

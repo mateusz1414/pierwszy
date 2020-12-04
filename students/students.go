@@ -111,11 +111,6 @@ func StudentDelete(c *gin.Context) {
 		outFunc(500, "Nieoczekiwany błąd serwera", 0, err.Error(), c)
 		return
 	}
-	err = c.ShouldBindJSON(&student)
-	if err != nil {
-		outFunc(400, "Podaj poprawny format danych", 0, err.Error(), c)
-		return
-	}
 	student.StudentID = studentIdInt
 	db, dbBool := c.Get("db")
 	if dbBool == false {
@@ -155,11 +150,8 @@ func StudentChange(c *gin.Context) {
 		return
 	}
 	database := db.(gorm.DB)
-	oldStudent := Student{}
-	database.First(&oldStudent, newStudent.StudentID)
-	oldStudent.compare(&newStudent)
 
-	result := database.Model(oldStudent).Where("student_id=?", oldStudent.StudentID).Save(&oldStudent)
+	result := database.Model(newStudent).Where("student_id=?", newStudent.StudentID).Updates(newStudent)
 	outFunc(200, "Zmieniono dane studenta", result.RowsAffected, "", c)
 
 }
