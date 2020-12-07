@@ -37,25 +37,6 @@ func outFunc(status int, mess string, rows int64, errc string, c *gin.Context) {
 	c.JSON(status, outs)
 }
 
-func (s *Student) compare(nowy *Student) {
-	if nowy.Name != "" && nowy.Name != s.Name {
-		s.Name = nowy.Name
-	}
-	if nowy.Surname != "" && nowy.Surname != s.Surname {
-		s.Surname = nowy.Surname
-	}
-	if nowy.DateOfBrith != "" && nowy.DateOfBrith != s.DateOfBrith {
-		s.DateOfBrith = nowy.DateOfBrith
-	}
-	if nowy.Departament != "" && nowy.Departament != s.Departament {
-		s.Departament = nowy.Departament
-	}
-	if nowy.Sex != "" && nowy.Sex != s.Sex {
-		s.Sex = nowy.Sex
-	}
-
-}
-
 func getAll(c *gin.Context, database *gorm.DB) {
 	var studenci []Student
 	selectResult := database.Find(&studenci)
@@ -119,8 +100,12 @@ func StudentDelete(c *gin.Context) {
 	}
 	database := db.(*gorm.DB)
 	result := database.Where("student_id=?", student.StudentID).Delete(&Student{})
-	if result.Error != nil || result.RowsAffected == 0 {
+	if result.Error != nil {
 		outFunc(400, "Problem z usunięciem studenta", result.RowsAffected, result.Error.Error(), c)
+		return
+	}
+	if result.RowsAffected == 0 {
+		outFunc(400, "Problem z usunięciem studenta", result.RowsAffected, "Nie znaleziono studenta", c)
 		return
 	}
 	outFunc(200, "Usunięto studenta", result.RowsAffected, "", c)
@@ -150,8 +135,15 @@ func StudentChange(c *gin.Context) {
 		return
 	}
 	database := db.(*gorm.DB)
-
 	result := database.Model(newStudent).Where("student_id=?", newStudent.StudentID).Updates(newStudent)
+	if result.Error != nil {
+		outFunc(400, "Problem z usunięciem studenta", result.RowsAffected, result.Error.Error(), c)
+		return
+	}
+	if result.RowsAffected == 0 {
+		outFunc(400, "Problem z usunięciem studenta", result.RowsAffected, "Nie znaleziono studenta", c)
+		return
+	}
 	outFunc(200, "Zmieniono dane studenta", result.RowsAffected, "", c)
 
 }
