@@ -34,8 +34,8 @@ func Login(c *gin.Context) {
 		outFunc(500, "Nie znaleziono bazy danych", "Database error", c)
 		return
 	}
-	database := db.(gorm.DB)
-	err = userData.Authentication(database)
+	database := db.(*gorm.DB)
+	err = userData.Authentication(*database)
 	if err != nil {
 		outFunc(400, "Nie udało się zalogować", err.Error(), c)
 	} else {
@@ -65,8 +65,8 @@ func Register(c *gin.Context) {
 		outFunc(500, "Nie znaleziono bazy danych", "Database error", c)
 		return
 	}
-	database := db.(gorm.DB)
-	err = userData.RegisterValidate(database)
+	database := db.(*gorm.DB)
+	err = userData.RegisterValidate(*database)
 	if err != nil {
 		outFunc(400, "Nie udało się zarejestrować", err.Error(), c)
 	} else {
