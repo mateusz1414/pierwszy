@@ -6,8 +6,10 @@ import (
 	"os"
 	"strings"
 
+	"students/grades"
 	"students/loginandregister"
 	"students/students"
+	"students/teachers"
 	"students/user"
 
 	"github.com/gin-contrib/cors"
@@ -31,14 +33,27 @@ func main() {
 	student := server.Group("student")
 	{
 		student.GET("/:studentID", students.GetStudent)
-		student.DELETE("/:studentID", authMiddleware(), students.StudentDelete)
-		student.PUT("/:studentID", authMiddleware(), students.StudentChange)
-		student.POST("/", authMiddleware(), students.StudentAdd)
+		/*	student.DELETE("/:studentID", authMiddleware(), students.StudentDelete)
+			student.PUT("/:studentID", authMiddleware(), students.StudentChange)
+			student.POST("/", authMiddleware(), students.StudentAdd)*/
+	}
+	teacher := server.Group("teacher")
+	{
+		teacher.GET("/:teacherID", teachers.GetTeacher)
+		/*teacher.DELETE("/:teacherID", authMiddleware(), students.StudentDelete)
+		teacher.PUT("/:teacherID", authMiddleware(), students.StudentChange)
+		teacher.POST("/", authMiddleware(), students.StudentAdd)*/
 	}
 	user := server.Group("user")
 	{
 		user.POST("login", loginandregister.Login)
 		user.POST("register", loginandregister.Register)
+	}
+	grade := server.Group("grade")
+	{
+		grade.GET("/myGrades", authMiddleware("student"), grades.GetStudentGrades)
+		grade.GET("/getAll", authMiddleware("teacher"), grades.GetAllGrades)
+		grade.POST("/", authMiddleware("teacher"), grades.AddGrade)
 	}
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -63,7 +78,7 @@ func dbMiddleware(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-func authMiddleware() gin.HandlerFunc {
+func authMiddleware(permission string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		bearer := c.GetHeader("Authorization")
 		split := strings.Split(bearer, "Bearer ")
@@ -75,17 +90,24 @@ func authMiddleware() gin.HandlerFunc {
 			return
 		}
 		token := split[1]
-		isValid, userId := user.IsTokenValid(token)
+		isValid, claims := user.IsTokenValid(token)
 
 		if isValid == false {
 			c.JSON(401, gin.H{
 				"error": "unauthenticated",
 			})
 			c.Abort()
-		} else {
-			c.Set("userid", userId)
-			c.Next()
+			return
 		}
+		if claims["permissions"] != permission {
+			c.JSON(403, gin.H{
+				"error": "You dont have permission",
+			})
+			c.Abort()
+			return
+		}
+		c.Set("userid", int64(claims["userid"].(float64)))
+		c.Next()
 
 	}
 }
