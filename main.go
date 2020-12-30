@@ -33,21 +33,25 @@ func main() {
 	student := server.Group("student")
 	{
 		student.GET("/:studentID", students.GetStudent)
-		/*	student.DELETE("/:studentID", authMiddleware(), students.StudentDelete)
-			student.PUT("/:studentID", authMiddleware(), students.StudentChange)
-			student.POST("/", authMiddleware(), students.StudentAdd)*/
+		student.POST("/sendRequest", authMiddleware("user"), students.RequestStudent)
+		student.DELETE("/:studentID", authMiddleware("dean"), students.StudentDelete)
+		student.PUT("/:studentID", authMiddleware("dean"), students.StudentChange)
+	}
+	management := server.Group("management")
+	{
+		management.GET("/applicationList", authMiddleware("dean"), students.ApplicationList)
+		management.PUT("/:studentID", authMiddleware("dean"), students.StudentAdd)
+		management.DELETE("/:studentID", authMiddleware("dean"), students.WaitingDiscard)
 	}
 	teacher := server.Group("teacher")
 	{
 		teacher.GET("/:teacherID", teachers.GetTeacher)
-		/*teacher.DELETE("/:teacherID", authMiddleware(), students.StudentDelete)
-		teacher.PUT("/:teacherID", authMiddleware(), students.StudentChange)
-		teacher.POST("/", authMiddleware(), students.StudentAdd)*/
 	}
-	user := server.Group("user")
+	userGroup := server.Group("user")
 	{
-		user.POST("login", loginandregister.Login)
-		user.POST("register", loginandregister.Register)
+		userGroup.POST("login", loginandregister.Login)
+		userGroup.POST("register", loginandregister.Register)
+		userGroup.GET("active/:userID/:code", user.Activation)
 	}
 	grade := server.Group("grade")
 	{

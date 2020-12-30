@@ -2,11 +2,13 @@ package user
 
 import (
 	"crypto/md5"
+	"crypto/rand"
 	"encoding/hex"
 	"fmt"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/gin-gonic/gin"
 
 	"github.com/jinzhu/gorm"
 )
@@ -14,12 +16,14 @@ import (
 var secretcode = []byte("mysecretcode")
 
 type User struct {
-	UserID          int
+	UserID          int    `gorm:"primary_key"`
 	Login           string `json:"login"`
 	Hashpassword    string
 	Permissions     string
 	Password        string `json:"password"`
 	ConfirmPassword string `json:"confirmpassword"`
+	Active          int
+	Code            string
 }
 
 func (s *User) RegisterValidate(database *gorm.DB) error {
@@ -33,15 +37,20 @@ func (s *User) RegisterValidate(database *gorm.DB) error {
 		return fmt.Errorf("Hasła nie są jednakowe")
 	}
 	var count int64
-	database.Table("User").Where("login=?", s.Login).Count(&count)
+	database.Table("Users").Where("login=?", s.Login).Count(&count)
 	if count != 0 {
-		return fmt.Errorf("Taki urzytkownik już istnieje")
+		return fmt.Errorf("Login taken")
 	}
 	hash := md5.Sum([]byte(s.Password))
 	s.Hashpassword = hex.EncodeToString(hash[:])
-	err := database.Select("login", "hashpassword").Create(&s)
+	s.Active = 0
+	s.Permissions = "user"
+	token := make([]byte, 10)
+	rand.Read(token)
+	s.Code = generateToken()
+	err := database.Select("login", "hashpassword", "permissions", "active", "code").Create(&s)
 	if err.Error != nil {
-		return fmt.Errorf("Nie udało się dodać urzytkownika")
+		return fmt.Errorf("Server error")
 	}
 
 	return nil
@@ -53,7 +62,7 @@ func (s *User) Authentication(database *gorm.DB) error {
 	s.Hashpassword = hex.EncodeToString(hash[:])
 	result := database.Where("login=? and hashpassword=?", s.Login, s.Hashpassword).First(&s)
 	if result.RowsAffected == 0 {
-		return fmt.Errorf("invalid")
+		return fmt.Errorf("Invalid")
 	}
 	return nil
 }
@@ -84,4 +93,42 @@ func IsTokenValid(token string) (bool, jwt.MapClaims) {
 	} else {
 		return false, nil
 	}
+}
+
+func generateToken() string {
+	token := make([]byte, 10)
+	rand.Read(token)
+	return fmt.Sprintf("%x", token)
+}
+
+func Activation(c *gin.Context) {
+	userLogin := c.Param("userID")
+	code := c.Param("code")
+	db, ok := c.Get("db")
+	if !ok {
+		c.JSON(400, gin.H{
+			"errorCode": "Database error",
+		})
+		return
+	}
+	database := db.(*gorm.DB)
+	user := User{}
+	database.Where("login=?", userLogin).First(&user)
+	if user.Active == 1 {
+		c.JSON(400, gin.H{
+			"errorCode": "Already activated",
+		})
+		return
+	}
+	if user.Code != code {
+		c.JSON(400, gin.H{
+			"errorCode": "Invalid request",
+		})
+		return
+	}
+	user.Active = 1
+	database.Model(user).Select("active").Update(&user)
+	c.JSON(200, gin.H{
+		"errorCode": "",
+	})
 }

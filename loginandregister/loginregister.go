@@ -7,9 +7,12 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
+var serverAdress = "192.168.0.20:8081/"
+
 type Outs struct {
-	Message   string
-	ErrorCode string
+	Message       string `json:"message"`
+	ErrorCode     string `json:"errorCode"`
+	ActivationURL string `json:"activationURL"`
 }
 
 func outFunc(status int, mess string, errc string, c *gin.Context) {
@@ -37,6 +40,14 @@ func Login(c *gin.Context) {
 	if err != nil {
 		outFunc(400, "Invalid login or password", err.Error(), c)
 	} else {
+		if userData.Active == 0 {
+			c.JSON(400, gin.H{
+				"message":       "Accont is not active",
+				"errorCode":     "Not active",
+				"activationURL": serverAdress + "user/active/" + userData.Login + "/" + userData.Code,
+			})
+			return
+		}
 		token, err := userData.GetAuthToken()
 		if err != nil {
 			outFunc(500, "Server error", err.Error(), c)
@@ -66,9 +77,12 @@ func Register(c *gin.Context) {
 	database := db.(*gorm.DB)
 	err = userData.RegisterValidate(database)
 	if err != nil {
-		outFunc(400, "Nie udało się zarejestrować", err.Error(), c)
+		outFunc(400, "Register failed", err.Error(), c)
 	} else {
-		outFunc(200, "Poprawnie zarjestrowano", "", c)
+		result := Outs{}
+		result.Message = "Poprawnie zarjestrowano"
+		result.ActivationURL = serverAdress + "user/active/" + userData.Login + "/" + userData.Code
+		c.JSON(200, result)
 	}
 
 }
