@@ -22,16 +22,28 @@ type Subject struct {
 	Name      string `json:"name"`
 }
 
-//Result return data in JSON
-type Result struct {
+//TeacherResult return result for teacher
+type TeacherResult struct {
 	TotalResults int64     `json:"totalResults"`
 	Teachers     []Teacher `json:"teachers"`
 	ErrorCode    string    `json:"errorCode"`
 }
 
+//DepartamentResult return result of departaments
+type DepartamentResult struct {
+	TotalResults int64         `json:"totalResults"`
+	Departaments []Departament `json:"departaments"`
+	ErrorCode    string        `json:"errorCode"`
+}
+
+type Departament struct {
+	DepartamentID int    `gorm:"primary_key" json:"departamentID"`
+	Name          string `json:"name"`
+}
+
 func getAll(c *gin.Context, database *gorm.DB) {
 	status := 200
-	result := Result{}
+	result := TeacherResult{}
 	teachers := []Teacher{}
 	selectResult := database.Joins("inner join Subjects on Subjects.subject_id=Teachers.subject_id").Preload("Subject").Find(&teachers)
 	if selectResult.RowsAffected == 0 {
@@ -47,7 +59,7 @@ func getAll(c *gin.Context, database *gorm.DB) {
 func GetTeacher(c *gin.Context) {
 	db, ok := c.Get("db")
 	status := 200
-	result := Result{}
+	result := TeacherResult{}
 	teacherIDString := c.Param("teacherID")
 	if !ok {
 		status = 500
@@ -75,5 +87,21 @@ func GetTeacher(c *gin.Context) {
 	}
 	result.TotalResults = selectResult.RowsAffected
 	result.Teachers = []Teacher{teacher}
+	c.JSON(status, result)
+}
+
+func GetDepartaments(c *gin.Context) {
+	db, ok := c.Get("db")
+	status := 200
+	result := DepartamentResult{}
+	if !ok {
+		result.ErrorCode = "Database error"
+		result.TotalResults = 0
+		status = 500
+		c.JSON(status, result)
+	}
+	database := db.(*gorm.DB)
+	selsectResult := database.Find(&result.Departaments)
+	result.TotalResults = selsectResult.RowsAffected
 	c.JSON(status, result)
 }

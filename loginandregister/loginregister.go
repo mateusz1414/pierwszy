@@ -44,7 +44,7 @@ func Login(c *gin.Context) {
 			c.JSON(400, gin.H{
 				"message":       "Accont is not active",
 				"errorCode":     "Not active",
-				"activationURL": serverAdress + "user/active/" + userData.Login + "/" + userData.Code,
+				"activationURL": serverAdress + "user/active/" + userData.Email + "/" + userData.Code,
 			})
 			return
 		}
@@ -53,10 +53,12 @@ func Login(c *gin.Context) {
 			outFunc(500, "Server error", err.Error(), c)
 		} else {
 			c.JSON(200, gin.H{
-				"Message":    "Logged",
-				"ErrorCode":  "",
-				"Permission": userData.Permissions,
-				"AuthToken":  token,
+				"message":     "Logged",
+				"errorCode":   "",
+				"permissions": userData.Permissions,
+				"email":       userData.Email,
+				"userID":      userData.UserID,
+				"authToken":   token,
 			})
 		}
 	}
@@ -80,8 +82,8 @@ func Register(c *gin.Context) {
 		outFunc(400, "Register failed", err.Error(), c)
 	} else {
 		result := Outs{}
-		result.Message = "Poprawnie zarjestrowano"
-		result.ActivationURL = serverAdress + "user/active/" + userData.Login + "/" + userData.Code
+		result.Message = "Registered"
+		result.ActivationURL = serverAdress + "user/active/" + userData.Email + "/" + userData.Code
 		c.JSON(200, result)
 	}
 

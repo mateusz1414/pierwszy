@@ -1,7 +1,9 @@
 package students
 
 import (
+	"fmt"
 	"strconv"
+	"students/user"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
@@ -28,7 +30,7 @@ type Student struct {
 	Surname       string      `json:"surname"`
 	Dob           string      `json:"dob"`
 	DepartamentID int         `json:"-"`
-	Departament   Departament `gorm:"foreignKey:departament_id;association_foreignkey:departament_id" json:"departament"`
+	Departaments  Departament `gorm:"foreignKey:departament_id;association_foreignkey:departament_id" json:"departament"`
 	Sex           int         `json:"sex"`
 }
 
@@ -60,7 +62,7 @@ func OutFunc(status int, mess string, rows int64, errc string, c *gin.Context) {
 
 func getAll(c *gin.Context, database *gorm.DB) {
 	var studenci []Student
-	selectResult := database.Joins("inner join Departaments on Departaments.departament_id=Students.departament_id").Preload("Departament").Find(&studenci)
+	selectResult := database.Joins("inner join Departaments on Departaments.departament_id=Students.departament_id").Preload("Departaments").Find(&studenci)
 	result := Result{
 		TotalResults: selectResult.RowsAffected,
 		Students:     studenci,
@@ -118,8 +120,19 @@ func StudentDelete(c *gin.Context) {
 		return
 	}
 	database := db.(*gorm.DB)
-	database.Table("Grades").Where("student_id=?", student.StudentID).Delete(&Student{})
-	if result := database.Delete(&student, student.StudentID); result.RowsAffected == 0 {
+	err = database.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Table("Grades").Where("student_id=?", student.StudentID).Delete(&Student{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Model(&user.User{}).Where("user_id=?", student.StudentID).Update("permissions", "user").Error; err != nil {
+			return err
+		}
+		if result := tx.Delete(&student, student.StudentID); result.RowsAffected == 0 {
+			return fmt.Errorf("Not found")
+		}
+		return nil
+	})
+	if err != nil {
 		OutFunc(400, "", 0, "Not found", c)
 		return
 	}
@@ -181,6 +194,9 @@ func StudentAdd(c *gin.Context) {
 			return err
 		}
 		if err := tx.Delete(&student, student.StudentID).Error; err != nil {
+			return err
+		}
+		if err := tx.Model(user.User{}).Where("user_id=?", student.StudentID).Updates(&user.User{Permissions: "student"}).Error; err != nil {
 			return err
 		}
 		return nil
@@ -261,7 +277,7 @@ func ApplicationList(c *gin.Context) {
 		return
 	}
 	database := db.(*gorm.DB)
-	selectResult := database.Table("Waitings").Joins("left join Departaments on Departaments.departament_id=Waitings.departament_id").Preload("Departament").Find(&result.Students)
+	selectResult := database.Table("Waitings").Joins("left join Departaments on Departaments.departament_id=Waitings.departament_id").Preload("Departaments").Find(&result.Students)
 	result.TotalResults = selectResult.RowsAffected
 	c.JSON(status, result)
 }

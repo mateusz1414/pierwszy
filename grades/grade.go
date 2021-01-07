@@ -95,7 +95,7 @@ func GetAllGrades(c *gin.Context) {
 	}
 	userID := claims.(int64)
 	database := db.(*gorm.DB)
-	selectResult := database.Joins("inner join Grades on Students.student_id=Grades.student_id").Joins("inner join Teachers on Grades.subject_id=Teachers.subject_id").Where("Teachers.teacher_id=?", userID).Group("Students.student_id").Preload("Grades", "Grades.subject_id=(SELECT subject_id FROM Teachers WHERE teacher_id=?)", userID).Find(&result.Students)
+	selectResult := database.Joins("inner join Departament_subject ds on Students.departament_id=ds.departament_id").Joins("left join Grades on Students.student_id=Grades.student_id AND ds.subject_id=Grades.subject_id").Joins("left join Subjects on Grades.subject_id=Subjects.subject_id").Joins("inner join Teachers on ds.subject_id=Teachers.subject_id").Where("Teachers.teacher_id=?", userID).Group("Students.student_id").Preload("Grades", "Grades.subject_id=(SELECT subject_id FROM Teachers WHERE teacher_id=?)", userID).Find(&result.Students)
 	result.GradesCount = selectResult.RowsAffected
 	database.Table("Subjects").Select("name").Where("subject_id=(SELECT subject_id FROM Teachers WHERE teacher_id=?)", userID).First(&result)
 	c.JSON(status, result)
@@ -119,6 +119,7 @@ func AddGrade(c *gin.Context) {
 		students.OutFunc(500, "", 0, "server error", c)
 		return
 	}
+
 	userID := claims.(int64)
 	database := db.(*gorm.DB)
 	var teacher Teacher
@@ -135,5 +136,13 @@ func AddGrade(c *gin.Context) {
 		students.OutFunc(400, "", 0, "database error", c)
 		return
 	}
-	students.OutFunc(200, "success", selectResult.RowsAffected, "", c)
+	grades := []Grade{}
+	database.Where("student_id=? AND subject_id=?", grade.StudentID, grade.SubjectID).Find(&grades)
+	c.JSON(200, gin.H{
+		"message":       "success",
+		"updateRows":    selectResult.RowsAffected,
+		"studentID":     grade.StudentID,
+		"errorCode":     "",
+		"studentGrades": grades,
+	})
 }

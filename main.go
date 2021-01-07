@@ -37,6 +37,10 @@ func main() {
 		student.DELETE("/:studentID", authMiddleware("dean"), students.StudentDelete)
 		student.PUT("/:studentID", authMiddleware("dean"), students.StudentChange)
 	}
+	departament := server.Group("departament")
+	{
+		departament.GET("/getAll", teachers.GetDepartaments)
+	}
 	management := server.Group("management")
 	{
 		management.GET("/applicationList", authMiddleware("dean"), students.ApplicationList)

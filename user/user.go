@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -17,9 +18,9 @@ var secretcode = []byte("mysecretcode")
 
 type User struct {
 	UserID          int    `gorm:"primary_key"`
-	Login           string `json:"login"`
+	Email           string `json:"email"`
 	Hashpassword    string
-	Permissions     string
+	Permissions     string `json:"permissions"`
 	Password        string `json:"password"`
 	ConfirmPassword string `json:"confirmpassword"`
 	Active          int
@@ -27,19 +28,20 @@ type User struct {
 }
 
 func (s *User) RegisterValidate(database *gorm.DB) error {
-	if len(s.Login) <= 4 {
-		return fmt.Errorf("Login jest zbyt krótki")
+	match, _ := regexp.Match(`^([a-zA-Z0-9_.])+\@+([a-z-])+\.+([a-z]{2,4})+$`, []byte(s.Email))
+	if !match {
+		return fmt.Errorf("Invalid email")
 	}
 	if len(s.Password) <= 4 {
-		return fmt.Errorf("Hasło jest zbyt krótkie")
+		return fmt.Errorf("Password is to short")
 	}
 	if s.Password != s.ConfirmPassword {
-		return fmt.Errorf("Hasła nie są jednakowe")
+		return fmt.Errorf("Password do not match")
 	}
 	var count int64
-	database.Table("Users").Where("login=?", s.Login).Count(&count)
+	database.Table("Users").Where("email=?", s.Email).Count(&count)
 	if count != 0 {
-		return fmt.Errorf("Login taken")
+		return fmt.Errorf("Email taken")
 	}
 	hash := md5.Sum([]byte(s.Password))
 	s.Hashpassword = hex.EncodeToString(hash[:])
@@ -48,7 +50,7 @@ func (s *User) RegisterValidate(database *gorm.DB) error {
 	token := make([]byte, 10)
 	rand.Read(token)
 	s.Code = generateToken()
-	err := database.Select("login", "hashpassword", "permissions", "active", "code").Create(&s)
+	err := database.Select("email", "hashpassword", "permissions", "active", "code").Create(&s)
 	if err.Error != nil {
 		return fmt.Errorf("Server error")
 	}
@@ -60,7 +62,7 @@ func (s *User) RegisterValidate(database *gorm.DB) error {
 func (s *User) Authentication(database *gorm.DB) error {
 	hash := md5.Sum([]byte(s.Password))
 	s.Hashpassword = hex.EncodeToString(hash[:])
-	result := database.Where("login=? and hashpassword=?", s.Login, s.Hashpassword).First(&s)
+	result := database.Where("email=? and hashpassword=?", s.Email, s.Hashpassword).First(&s)
 	if result.RowsAffected == 0 {
 		return fmt.Errorf("Invalid")
 	}
@@ -113,7 +115,7 @@ func Activation(c *gin.Context) {
 	}
 	database := db.(*gorm.DB)
 	user := User{}
-	database.Where("login=?", userLogin).First(&user)
+	database.Where("email=?", userLogin).First(&user)
 	if user.Active == 1 {
 		c.JSON(400, gin.H{
 			"errorCode": "Already activated",
