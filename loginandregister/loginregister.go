@@ -2,12 +2,13 @@ package loginandregister
 
 import (
 	"students/user"
+	"time"
+
+	"github.com/dgrijalva/jwt-go"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
 )
-
-var serverAdress = "192.168.0.20:8081/"
 
 type Outs struct {
 	Message       string `json:"message"`
@@ -44,11 +45,15 @@ func Login(c *gin.Context) {
 			c.JSON(400, gin.H{
 				"message":       "Accont is not active",
 				"errorCode":     "Not active",
-				"activationURL": serverAdress + "user/active/" + userData.Email + "/" + userData.Code,
+				"activationURL": user.APIAdress + "user/activation/" + userData.Code,
 			})
 			return
 		}
-		token, err := userData.GetAuthToken()
+		token, err := user.CreateJWTToken(jwt.MapClaims{
+			"userid":      userData.UserID,
+			"permissions": userData.Permissions,
+			"time":        time.Now().Unix(),
+		})
 		if err != nil {
 			outFunc(500, "Server error", err.Error(), c)
 		} else {
@@ -83,7 +88,7 @@ func Register(c *gin.Context) {
 	} else {
 		result := Outs{}
 		result.Message = "Registered"
-		result.ActivationURL = serverAdress + "user/active/" + userData.Email + "/" + userData.Code
+		result.ActivationURL = user.APIAdress + "user/activation/" + userData.Code
 		c.JSON(200, result)
 	}
 

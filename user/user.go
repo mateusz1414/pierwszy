@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"regexp"
-	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
@@ -15,6 +14,12 @@ import (
 )
 
 var secretcode = []byte("mysecretcode")
+
+//APIAdress have adress server API
+var APIAdress = "http://192.168.0.20:8081/"
+
+//ServerAdress have adress web application
+var ServerAdress = "http://192.168.0.20:8080/"
 
 type User struct {
 	UserID          int    `gorm:"primary_key"`
@@ -47,15 +52,15 @@ func (s *User) RegisterValidate(database *gorm.DB) error {
 	s.Hashpassword = hex.EncodeToString(hash[:])
 	s.Active = 0
 	s.Permissions = "user"
-	token := make([]byte, 10)
-	rand.Read(token)
-	s.Code = generateToken()
-	err := database.Select("email", "hashpassword", "permissions", "active", "code").Create(&s)
+	err := database.Select("email", "hashpassword", "permissions", "active").Create(&s)
 	if err.Error != nil {
 		return fmt.Errorf("Server error")
 	}
-
-	return nil
+	var erro error
+	s.Code, erro = CreateJWTToken(jwt.MapClaims{
+		"userid": s.UserID,
+	})
+	return erro
 
 }
 
@@ -66,35 +71,37 @@ func (s *User) Authentication(database *gorm.DB) error {
 	if result.RowsAffected == 0 {
 		return fmt.Errorf("Invalid")
 	}
-	return nil
+	var err error = nil
+	if s.Active == 0 {
+		s.Code, err = CreateJWTToken(jwt.MapClaims{
+			"userid": s.UserID,
+		})
+	}
+	return err
 }
 
-func (s *User) GetAuthToken() (string, error) {
-	claims := jwt.MapClaims{}
-	claims["userid"] = s.UserID
-	claims["permissions"] = s.Permissions
-	claims["time"] = time.Now().Unix()
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &claims)
+func CreateJWTToken(c jwt.Claims) (string, error) {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, c)
 	authToken, err := token.SignedString(secretcode)
 	return authToken, err
 }
 
-func IsTokenValid(token string) (bool, jwt.MapClaims) {
-	tok, err := jwt.Parse(token, func(tok *jwt.Token) (interface{}, error) {
-		if _, ok := tok.Method.(*jwt.SigningMethodHMAC); ok == false {
-			return nil, fmt.Errorf("Token nie jest walidowany %v", tok.Header["alg"])
+func TokenValidation(tokenString string, function func(claims jwt.MapClaims) error) (bool, jwt.MapClaims) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); ok == false {
+			return nil, fmt.Errorf("Token is not valid %v", token.Header["alg"])
 		}
 		return secretcode, nil
 	})
 	if err != nil {
 		return false, nil
 	}
-	if claims, ok := tok.Claims.(jwt.MapClaims); ok && tok.Valid && claims["time"].(float64)+1800 > float64(time.Now().Unix()) {
-		return true, claims
-		//return true, strconv.Itoa(int(userid.(float64)))
-	} else {
+	claims := token.Claims.(jwt.MapClaims)
+	err = function(claims)
+	if err != nil && token.Valid {
 		return false, nil
 	}
+	return true, claims
 }
 
 func generateToken() string {
@@ -104,8 +111,7 @@ func generateToken() string {
 }
 
 func Activation(c *gin.Context) {
-	userLogin := c.Param("userID")
-	code := c.Param("code")
+	token := c.Param("jwt")
 	db, ok := c.Get("db")
 	if !ok {
 		c.JSON(400, gin.H{
@@ -114,23 +120,25 @@ func Activation(c *gin.Context) {
 		return
 	}
 	database := db.(*gorm.DB)
-	user := User{}
-	database.Where("email=?", userLogin).First(&user)
-	if user.Active == 1 {
-		c.JSON(400, gin.H{
-			"errorCode": "Already activated",
-		})
+	isValid, claims := TokenValidation(token, func(claims jwt.MapClaims) error {
+		if claims["userid"] != nil {
+			return nil
+		}
+		return fmt.Errorf("Invalid token")
+	})
+	if isValid == false {
+		c.Redirect(307, ServerAdress+"login/invalidToken")
 		return
 	}
-	if user.Code != code {
-		c.JSON(400, gin.H{
-			"errorCode": "Invalid request",
-		})
+	user := User{
+		UserID: int(claims["userid"].(float64)),
+	}
+	result := database.First(&user)
+	if result.RowsAffected == 0 {
+		c.Redirect(307, ServerAdress+"login/notFound")
 		return
 	}
 	user.Active = 1
 	database.Model(user).Select("active").Update(&user)
-	c.JSON(200, gin.H{
-		"errorCode": "",
-	})
+	c.Redirect(307, ServerAdress+"login/activated")
 }

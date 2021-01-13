@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"students/grades"
 	"students/loginandregister"
@@ -12,6 +13,7 @@ import (
 	"students/teachers"
 	"students/user"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
@@ -55,7 +57,7 @@ func main() {
 	{
 		userGroup.POST("login", loginandregister.Login)
 		userGroup.POST("register", loginandregister.Register)
-		userGroup.GET("active/:userID/:code", user.Activation)
+		userGroup.GET("activation/:jwt", user.Activation)
 	}
 	grade := server.Group("grade")
 	{
@@ -98,7 +100,12 @@ func authMiddleware(permission string) gin.HandlerFunc {
 			return
 		}
 		token := split[1]
-		isValid, claims := user.IsTokenValid(token)
+		isValid, claims := user.TokenValidation(token, func(claims jwt.MapClaims) error {
+			if claims["time"] != nil && claims["userid"] != nil && claims["permissions"] != nil && claims["time"].(float64)+1800 > float64(time.Now().Unix()) {
+				return nil
+			}
+			return fmt.Errorf("Invalid token")
+		})
 
 		if isValid == false {
 			c.JSON(401, gin.H{
