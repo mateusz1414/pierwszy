@@ -31,7 +31,7 @@ type Student struct {
 	Dob           string      `json:"dob"`
 	DepartamentID int         `json:"-"`
 	Departaments  Departament `gorm:"foreignKey:departament_id;association_foreignkey:departament_id" json:"departament"`
-	Sex           int         `json:"sex"`
+	Sex           *int        `json:"sex"`
 }
 
 //Waiting is user who wait on add to student list
