@@ -79,7 +79,6 @@ func connection() (*gorm.DB, error) {
 	dbname := "college"
 	db, err := gorm.Open("mysql", user+":"+password+"@tcp("+serverSQL+")/"+dbname+"?charset=utf8mb4&parseTime=True&loc=Local")
 	if err != nil {
-		fmt.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 		return nil, fmt.Errorf("Blad polaczenia z baza danych: %v", err.Error())
 	}
 	return db, nil

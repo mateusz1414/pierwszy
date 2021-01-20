@@ -131,7 +131,7 @@ func AddGrade(c *gin.Context) {
 		students.OutFunc(400, "Student not found", 0, "not found", c)
 		return
 	}
-	selectResult := database.Table("Grades").Create(&grade)
+	selectResult := database.Table("grades").Create(&grade)
 	if selectResult.RowsAffected == 0 {
 		students.OutFunc(400, "", 0, "database error", c)
 		return

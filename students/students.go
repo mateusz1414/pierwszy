@@ -121,7 +121,7 @@ func StudentDelete(c *gin.Context) {
 	}
 	database := db.(*gorm.DB)
 	err = database.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Table("Grades").Where("student_id=?", student.StudentID).Delete(&Student{}).Error; err != nil {
+		if err := tx.Table("grades").Where("student_id=?", student.StudentID).Delete(&Student{}).Error; err != nil {
 			return err
 		}
 		if err := tx.Model(&user.User{}).Where("user_id=?", student.StudentID).Update("permissions", "user").Error; err != nil {
@@ -190,7 +190,7 @@ func StudentAdd(c *gin.Context) {
 		if err := tx.First(&student, student.StudentID).Error; err != nil {
 			return err
 		}
-		if err := tx.Table("Students").Create(&student).Error; err != nil {
+		if err := tx.Table("students").Create(&student).Error; err != nil {
 			return err
 		}
 		if err := tx.Delete(&student, student.StudentID).Error; err != nil {
