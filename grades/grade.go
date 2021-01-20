@@ -70,7 +70,7 @@ func GetStudentGrades(c *gin.Context) {
 	}
 	result.StudentID = claims.(int64)
 	database := db.(*gorm.DB)
-	selectResult := database.Joins("inner join Grades on Grades.subject_id=Subjects.subject_id").Where("student_id=?", result.StudentID).Group("Subjects.subject_id").Preload("Grades", "student_id=?", result.StudentID).Find(&result.Subjects)
+	selectResult := database.Joins("inner join grades on grades.subject_id=subjects.subject_id").Where("student_id=?", result.StudentID).Group("subjects.subject_id").Preload("Grades", "student_id=?", result.StudentID).Find(&result.Subjects)
 	result.GradesCount = selectResult.RowsAffected
 	c.JSON(status, result)
 
@@ -95,9 +95,9 @@ func GetAllGrades(c *gin.Context) {
 	}
 	userID := claims.(int64)
 	database := db.(*gorm.DB)
-	selectResult := database.Joins("inner join Departament_subject ds on Students.departament_id=ds.departament_id").Joins("left join Grades on Students.student_id=Grades.student_id AND ds.subject_id=Grades.subject_id").Joins("left join Subjects on Grades.subject_id=Subjects.subject_id").Joins("inner join Teachers on ds.subject_id=Teachers.subject_id").Where("Teachers.teacher_id=?", userID).Group("Students.student_id").Preload("Grades", "Grades.subject_id=(SELECT subject_id FROM Teachers WHERE teacher_id=?)", userID).Find(&result.Students)
+	selectResult := database.Joins("inner join departament_subject ds on students.departament_id=ds.departament_id").Joins("left join grades on students.student_id=grades.student_id AND ds.subject_id=grades.subject_id").Joins("left join subjects on grades.subject_id=subjects.subject_id").Joins("inner join teachers on ds.subject_id=teachers.subject_id").Where("teachers.teacher_id=?", userID).Group("students.student_id").Preload("Grades", "grades.subject_id=(SELECT subject_id FROM teachers WHERE teacher_id=?)", userID).Find(&result.Students)
 	result.GradesCount = selectResult.RowsAffected
-	database.Table("Subjects").Select("name").Where("subject_id=(SELECT subject_id FROM Teachers WHERE teacher_id=?)", userID).First(&result)
+	database.Table("subjects").Select("name").Where("subject_id=(SELECT subject_id FROM teachers WHERE teacher_id=?)", userID).First(&result)
 	c.JSON(status, result)
 
 }
@@ -126,7 +126,7 @@ func AddGrade(c *gin.Context) {
 	count := 0
 	database.Where("teacher_id=?", userID).First(&teacher)
 	grade.SubjectID = teacher.SubjectID
-	database.Table("Students").Joins("inner join Departament_subject on Students.departament_id=Departament_subject.departament_id").Where("subject_id=? AND student_id=?", grade.SubjectID, grade.StudentID).Count(&count)
+	database.Table("students").Joins("inner join departament_subject on students.departament_id=departament_subject.departament_id").Where("subject_id=? AND student_id=?", grade.SubjectID, grade.StudentID).Count(&count)
 	if count == 0 {
 		students.OutFunc(400, "Student not found", 0, "not found", c)
 		return

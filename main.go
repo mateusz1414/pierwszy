@@ -17,7 +17,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	_ "github.com/jinzhu/gorm/dialects/mysql"
 )
 
 func main() {
@@ -73,9 +73,13 @@ func main() {
 }
 
 func connection() (*gorm.DB, error) {
-	file := "uczelnia"
-	db, err := gorm.Open("sqlite3", file)
+	serverSQL := "34.107.70.144"
+	user := "apiuser"
+	password := "apistudents"
+	dbname := "college"
+	db, err := gorm.Open("mysql", user+":"+password+"@tcp("+serverSQL+")/"+dbname+"?charset=utf8mb4&parseTime=True&loc=Local")
 	if err != nil {
+		fmt.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 		return nil, fmt.Errorf("Blad polaczenia z baza danych: %v", err.Error())
 	}
 	return db, nil

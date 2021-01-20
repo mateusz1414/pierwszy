@@ -45,7 +45,7 @@ func getAll(c *gin.Context, database *gorm.DB) {
 	status := 200
 	result := TeacherResult{}
 	teachers := []Teacher{}
-	selectResult := database.Joins("inner join Subjects on Subjects.subject_id=Teachers.subject_id").Preload("Subject").Find(&teachers)
+	selectResult := database.Joins("inner join subjects on subjects.subject_id=teachers.subject_id").Order("surname,name").Preload("Subject").Find(&teachers)
 	if selectResult.RowsAffected == 0 {
 		status = 400
 		result.ErrorCode = "Teachers not found"
@@ -80,7 +80,7 @@ func GetTeacher(c *gin.Context) {
 	teacher := Teacher{
 		TeacherID: teacherIDInt,
 	}
-	selectResult := database.Joins("inner join Subjects on Subjects.subject_id=Teachers.subject_id").Where("teacher_id=?", teacher.TeacherID).Preload("Subjects").First(&teacher)
+	selectResult := database.Joins("inner join subjects on subjects.subject_id=teachers.subject_id").Where("teacher_id=?", teacher.TeacherID).Order("surname,name").Preload("Subject").First(&teacher)
 	if selectResult.RowsAffected == 0 {
 		status = 400
 		result.ErrorCode = "Teacher not found"

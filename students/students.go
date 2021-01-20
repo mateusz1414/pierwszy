@@ -62,7 +62,7 @@ func OutFunc(status int, mess string, rows int64, errc string, c *gin.Context) {
 
 func getAll(c *gin.Context, database *gorm.DB) {
 	var studenci []Student
-	selectResult := database.Joins("inner join Departaments on Departaments.departament_id=Students.departament_id").Preload("Departaments").Find(&studenci)
+	selectResult := database.Joins("inner join departaments on departaments.departament_id=students.departament_id").Order("surname,name").Preload("Departaments").Find(&studenci)
 	result := Result{
 		TotalResults: selectResult.RowsAffected,
 		Students:     studenci,
@@ -94,7 +94,7 @@ func GetStudent(c *gin.Context) {
 		status = 500
 		result.ErrorCode = "Server error"
 	}
-	selectResult := database.Joins("inner join Departaments on Departaments.departament_id=Students.departament_id").Where("student_id=?", student.StudentID).Preload("Departaments").First(&student)
+	selectResult := database.Joins("inner join departaments on departaments.departament_id=students.departament_id").Where("student_id=?", student.StudentID).Order("surname,name").Preload("Departaments").First(&student)
 	if selectResult.RowsAffected == 0 {
 		status = 404
 		result.ErrorCode = "Student not found"
@@ -251,7 +251,7 @@ func RequestStudent(c *gin.Context) {
 	}
 	student.StudentID = claims.(int64)
 	var count int64
-	database.Table("Waitings").Where("student_id=?", student.StudentID).Count(&count)
+	database.Table("waitings").Where("student_id=?", student.StudentID).Count(&count)
 	if count != 0 {
 		OutFunc(400, "", 0, "On list", c)
 		return
@@ -277,7 +277,7 @@ func ApplicationList(c *gin.Context) {
 		return
 	}
 	database := db.(*gorm.DB)
-	selectResult := database.Table("Waitings").Joins("left join Departaments on Departaments.departament_id=Waitings.departament_id").Preload("Departaments").Find(&result.Students)
+	selectResult := database.Table("waitings").Joins("left join departaments on departaments.departament_id=waitings.departament_id").Order("surname,name").Preload("Departaments").Find(&result.Students)
 	result.TotalResults = selectResult.RowsAffected
 	c.JSON(status, result)
 }

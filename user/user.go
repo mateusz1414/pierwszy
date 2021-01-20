@@ -16,10 +16,11 @@ import (
 var secretcode = []byte("mysecretcode")
 
 //APIAdress have adress server API
-var APIAdress = "http://192.168.0.20:8081/"
+//var APIAdress = "http://192.168.0.20:8081/"
+var APIAdress = "http://35.198.132.61:8081/"
 
 //ServerAdress have adress web application
-var ServerAdress = "http://192.168.0.20:8080/"
+var ServerAdress = "http://35.198.132.61:8080/"
 
 type User struct {
 	UserID          int    `gorm:"primary_key"`
@@ -44,7 +45,7 @@ func (s *User) RegisterValidate(database *gorm.DB) error {
 		return fmt.Errorf("Password do not match")
 	}
 	var count int64
-	database.Table("Users").Where("email=?", s.Email).Count(&count)
+	database.Table("users").Where("email=?", s.Email).Count(&count)
 	if count != 0 {
 		return fmt.Errorf("Email taken")
 	}
