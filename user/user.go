@@ -17,10 +17,10 @@ var secretcode = []byte("mysecretcode")
 
 //APIAdress have adress server API
 //var APIAdress = "http://192.168.0.20:8081/"
-var APIAdress = "http://35.198.132.61:8081/"
+var APIAdress = "http://studentscode.online/api/"
 
 //ServerAdress have adress web application
-var ServerAdress = "http://35.198.132.61:8080/"
+var ServerAdress = "http://studentscode.online/"
 
 type User struct {
 	UserID          int    `gorm:"primary_key"`
