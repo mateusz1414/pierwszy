@@ -75,7 +75,7 @@ func main() {
 }
 
 func connection() (*gorm.DB, error) {
-	db, err := gorm.Open("mysql", "root:@tcp(127.0.0.1:3306)/uczelnia?charset=utf8&parseTime=True&loc=Local")
+	db, err := gorm.Open("mysql", "user:zaq1@WSX@tcp(34.107.48.244:3306)/uczelnia?charset=utf8&parseTime=True&loc=Local")
 	if err != nil {
 		return nil, fmt.Errorf("Blad polaczenia z baza danych: %v", err.Error())
 	}
