@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -27,11 +28,24 @@ func main() {
 		return
 	}
 	server := gin.Default()
+
+	//cors policy
 	config := cors.DefaultConfig()
 	config.AllowAllOrigins = true
 	config.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization"}
 	server.Use(cors.New(config))
+
+	//add database
 	server.Use(dbMiddleware(database))
+
+	//read configs
+	file, err := ioutil.ReadFile("./config/credentials.json")
+	if err != nil {
+		log.Fatal("Read config problem")
+		return
+	}
+
+	//directores
 	student := server.Group("student")
 	{
 		student.GET("/:studentID", students.GetStudent)
@@ -56,6 +70,7 @@ func main() {
 	userGroup := server.Group("user")
 	{
 		userGroup.POST("login", loginandregister.Login)
+		userGroup.GET("oauth/login", addConfig("credentials", file), loginandregister.OauthLogin)
 		userGroup.POST("register", loginandregister.Register)
 		userGroup.GET("activation/:jwt", user.Activation)
 	}
@@ -87,6 +102,13 @@ func connection() (*gorm.DB, error) {
 func dbMiddleware(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Set("db", db)
+		c.Next()
+	}
+}
+
+func addConfig(name string, config []byte) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Set(name, config)
 		c.Next()
 	}
 }

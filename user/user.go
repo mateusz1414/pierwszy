@@ -25,12 +25,18 @@ var ServerAdress = "http://studentscode.online/"
 type User struct {
 	UserID          int    `gorm:"primary_key"`
 	Email           string `json:"email"`
-	Hashpassword    string
+	Hashpassword    string `json:"-"`
 	Permissions     string `json:"permissions"`
 	Password        string `json:"password"`
 	ConfirmPassword string `json:"confirmpassword"`
-	Active          int
-	Code            string
+	Active          int    `json:"-"`
+	Code            string `json:"-"`
+}
+
+type OauthData struct {
+	UserID  string `json:"sub"`
+	Picture string `json:"picture"`
+	Email   string `json:"email"`
 }
 
 func (s *User) RegisterValidate(database *gorm.DB) error {
@@ -79,6 +85,23 @@ func (s *User) Authentication(database *gorm.DB) error {
 		})
 	}
 	return err
+}
+
+//OauthLogin login user who use oauth
+func (data *OauthData) OauthLogin(database *gorm.DB) (u User, err error) {
+	err = nil
+	result := database.Where("email=?", data.Email).First(&u)
+	if result.RowsAffected == 0 {
+		u.Permissions = "user"
+		u.Active = 1
+		u.Email = data.Email
+		res := database.Select("email", "permissions", "active").Create(&u)
+		if res.RowsAffected == 0 {
+			err = fmt.Errorf("Add user problem")
+			return u, err
+		}
+	}
+	return u, err
 }
 
 func CreateJWTToken(c jwt.Claims) (string, error) {

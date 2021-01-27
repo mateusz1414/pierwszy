@@ -1,6 +1,8 @@
 package loginandregister
 
 import (
+	"encoding/json"
+	"io/ioutil"
 	"students/user"
 	"time"
 
@@ -8,12 +10,25 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 )
 
 type Outs struct {
 	Message       string `json:"message"`
 	ErrorCode     string `json:"errorCode"`
 	ActivationURL string `json:"activationURL"`
+}
+
+type Credentials struct {
+	Google Platform `json:"google"`
+}
+
+type Platform struct {
+	Cid      string   `json:"cid"`
+	Csecret  string   `json:"csecret"`
+	Redirect string   `json:"redirect"`
+	Scopes   []string `json:"scopes"`
 }
 
 func outFunc(status int, mess string, errc string, c *gin.Context) {
@@ -92,4 +107,55 @@ func Register(c *gin.Context) {
 		c.JSON(200, result)
 	}
 
+}
+
+func OauthLogin(c *gin.Context) {
+	config, _ := c.Get("credentials")
+	file := config.([]byte)
+	db, ok := c.Get("db")
+	if !ok {
+		c.Redirect(302, user.ServerAdress)
+		return
+	}
+	database := db.(*gorm.DB)
+	var cred Credentials
+	var oaperson user.OauthData
+	json.Unmarshal(file, &cred)
+	platform, endpoint := getData("google", cred)
+	conf := oauth2.Config{
+		ClientID:     platform.Cid,
+		ClientSecret: platform.Csecret,
+		RedirectURL:  platform.Redirect,
+		Scopes:       platform.Scopes,
+		Endpoint:     endpoint,
+	}
+	tok, err := conf.Exchange(oauth2.NoContext, c.Query("code"))
+	if err != nil {
+		c.Redirect(302, user.ServerAdress)
+		return
+	}
+	client := conf.Client(oauth2.NoContext, tok)
+	resp, err := client.Get("https://www.googleapis.com/oauth2/v3/userinfo")
+	if err != nil {
+		c.Redirect(302, user.ServerAdress)
+		return
+	}
+	defer resp.Body.Close()
+	data, _ := ioutil.ReadAll(resp.Body)
+	json.Unmarshal(data, &oaperson)
+	person, err := oaperson.OauthLogin(database)
+	if err != nil {
+		c.Redirect(302, user.ServerAdress)
+		return
+	}
+	c.JSON(200, person)
+}
+
+func getData(provider string, cred Credentials) (platform Platform, endpoint oauth2.Endpoint) {
+	switch provider {
+	case "google":
+		platform = cred.Google
+		endpoint = google.Endpoint
+	}
+	return platform, endpoint
 }
