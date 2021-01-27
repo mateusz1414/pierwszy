@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"strings"
 
@@ -23,7 +22,8 @@ import (
 func main() {
 	database, err := connection()
 	if err != nil {
-		log.Fatal("Problem z baza")
+		//log.Fatal("Problem z baza")
+		fmt.Println(err.Error(), "d")
 		return
 	}
 	server := gin.Default()
