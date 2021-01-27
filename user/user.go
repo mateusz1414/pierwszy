@@ -4,7 +4,6 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -15,11 +14,12 @@ import (
 var secretcode = []byte("mysecretcode")
 
 type Users struct {
-	Iduser          int
+	IDuser          int    `gorm:"column:id_user"`
 	Login           string `json:"login"`
 	Hashpassword    string
 	Password        string `json:"password"`
 	ConfirmPassword string `json:"confirmpassword"`
+	Permission      string
 }
 
 func (s *Users) RegisterValidate(database gorm.DB) error {
@@ -49,11 +49,10 @@ func (s *Users) RegisterValidate(database gorm.DB) error {
 }
 
 func (s *Users) Authentication(database gorm.DB) error {
-	var count int64
 	hash := md5.Sum([]byte(s.Password))
 	s.Hashpassword = hex.EncodeToString(hash[:])
-	database.Table("users").Where("login=? and hashpassword=?", s.Login, s.Hashpassword).Count(&count)
-	if count == 0 {
+	result := database.Table("users").Where("login=? and hashpassword=?", s.Login, s.Hashpassword).First(&s)
+	if result.RowsAffected == 0 {
 		return fmt.Errorf("Taki urzytkownik nie istnieje")
 	}
 	return nil
@@ -61,14 +60,15 @@ func (s *Users) Authentication(database gorm.DB) error {
 
 func (s *Users) GetAuthToken() (string, error) {
 	claims := jwt.MapClaims{}
-	claims["userid"] = s.Iduser
+	claims["userid"] = s.IDuser
 	claims["time"] = time.Now().Unix()
+	claims["permission"] = s.Permission
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &claims)
 	authToken, err := token.SignedString(secretcode)
 	return authToken, err
 }
 
-func IsTokenValid(token string) (bool, string) {
+func IsTokenValid(token string) (bool, jwt.MapClaims) {
 	tok, err := jwt.Parse(token, func(tok *jwt.Token) (interface{}, error) {
 		if _, ok := tok.Method.(*jwt.SigningMethodHMAC); ok == false {
 			return nil, fmt.Errorf("Token nie jest walidowany %v", tok.Header["alg"])
@@ -76,12 +76,11 @@ func IsTokenValid(token string) (bool, string) {
 		return secretcode, nil
 	})
 	if err != nil {
-		return false, ""
+		return false, nil
 	}
-	if claims, ok := tok.Claims.(jwt.MapClaims); ok && tok.Valid && claims["time"].(float64)+300 > float64(time.Now().Unix()) {
-		userid := claims["userid"]
-		return true, strconv.Itoa(int(userid.(float64)))
+	if claims, ok := tok.Claims.(jwt.MapClaims); ok && tok.Valid && claims["time"].(float64)+3000 > float64(time.Now().Unix()) {
+		return true, claims
 	} else {
-		return false, ""
+		return false, nil
 	}
 }

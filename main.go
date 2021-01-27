@@ -6,14 +6,18 @@ import (
 	"os"
 	"strings"
 
+	"students/deans"
+	"students/departaments"
+	"students/grades"
 	"students/loginandregister"
 	"students/students"
+	"students/teachers"
 	"students/user"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	_ "github.com/jinzhu/gorm/dialects/mysql"
 )
 
 func main() {
@@ -23,22 +27,45 @@ func main() {
 		return
 	}
 	server := gin.Default()
+	server.Use(dbMiddleware(*database))
 	config := cors.DefaultConfig()
 	config.AllowAllOrigins = true
-	config.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization"}
+	config.AllowHeaders = []string{"Origin", "Content-Type", "Content-Length", "Authorization"}
 	server.Use(cors.New(config))
-	server.Use(dbMiddleware(database))
 	student := server.Group("student")
 	{
-		student.GET("/:studentID", students.GetStudent)
-		student.DELETE("/:studentID", authMiddleware(), students.StudentDelete)
-		student.PUT("/:studentID", authMiddleware(), students.StudentChange)
-		student.POST("/", authMiddleware(), students.StudentAdd)
+		student.GET("/getAll", students.GetAll)
+		student.DELETE("/:studentID", authMiddleware("dean"), students.StudentDelete)
+		student.PUT("/:studentID", authMiddleware("dean"), students.StudentChange)
+		student.POST("/", authMiddleware("dean"), students.StudentAdd)
 	}
 	user := server.Group("user")
 	{
 		user.POST("login", loginandregister.Login)
 		user.POST("register", loginandregister.Register)
+	}
+	teacher := server.Group("teacher")
+	{
+		teacher.GET("/:teacherID", teachers.GetOnce)
+	}
+	subject := server.Group("subject")
+	{
+		subject.GET("/", authMiddleware("teacher"), grades.GetStudentsGradesFromSubject)
+	}
+	grade := server.Group("grade")
+	{
+		grade.GET("/getAllOfStudent", authMiddleware("student"), grades.GetGradesForOneStudent)
+		grade.GET("/getAllOfStudents", authMiddleware("teacher"), grades.GetStudentsGradesFromSubject)
+		grade.POST("/getAll", authMiddleware("teacher"), grades.AddGrade)
+	}
+	departament := server.Group("departament")
+	{
+		departament.GET("/", departaments.GetAll)
+	}
+	dean := server.Group("dean")
+	{
+		dean.GET("/", deans.GetAllUsersWithoutPermission)
+		dean.PUT("/", deans.AddPermission)
 	}
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -48,22 +75,21 @@ func main() {
 }
 
 func connection() (*gorm.DB, error) {
-	file := "uczelnia"
-	db, err := gorm.Open("sqlite3", file)
+	db, err := gorm.Open("mysql", "root:@tcp(127.0.0.1:3306)/uczelnia?charset=utf8&parseTime=True&loc=Local")
 	if err != nil {
 		return nil, fmt.Errorf("Blad polaczenia z baza danych: %v", err.Error())
 	}
 	return db, nil
 }
 
-func dbMiddleware(db *gorm.DB) gin.HandlerFunc {
+func dbMiddleware(db gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Set("db", db)
 		c.Next()
 	}
 }
 
-func authMiddleware() gin.HandlerFunc {
+func authMiddleware(permission string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		bearer := c.GetHeader("Authorization")
 		split := strings.Split(bearer, "Bearer ")
@@ -75,15 +101,22 @@ func authMiddleware() gin.HandlerFunc {
 			return
 		}
 		token := split[1]
-		isValid, userId := user.IsTokenValid(token)
+		isValid, claims := user.IsTokenValid(token)
 
 		if isValid == false {
 			c.JSON(401, gin.H{
 				"error": "unauthenticated",
 			})
 			c.Abort()
+		}
+		if claims["permission"] != permission {
+			c.JSON(401, gin.H{
+				"error": "no access",
+			})
+			c.Abort()
 		} else {
-			c.Set("userid", userId)
+			c.Set("permission", claims["permission"])
+			c.Set("userid", int(claims["userid"].(float64)))
 			c.Next()
 		}
 
