@@ -1,12 +1,15 @@
 package loginandregister
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"io/ioutil"
+	"math/rand"
 	"students/user"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/gin-contrib/sessions"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
@@ -25,10 +28,11 @@ type Credentials struct {
 }
 
 type Platform struct {
-	Cid      string   `json:"cid"`
-	Csecret  string   `json:"csecret"`
-	Redirect string   `json:"redirect"`
-	Scopes   []string `json:"scopes"`
+	Cid           string   `json:"cid"`
+	Csecret       string   `json:"csecret"`
+	Redirect      string   `json:"redirect"`
+	Scopes        []string `json:"scopes"`
+	GetJwtAddress string   `json:"getjwtaddress"`
 }
 
 func outFunc(status int, mess string, errc string, c *gin.Context) {
@@ -109,53 +113,82 @@ func Register(c *gin.Context) {
 
 }
 
-func OauthLogin(c *gin.Context) {
-	config, _ := c.Get("credentials")
-	file := config.([]byte)
-	db, ok := c.Get("db")
-	if !ok {
-		c.Redirect(302, user.ServerAdress)
-		return
-	}
-	database := db.(*gorm.DB)
-	var cred Credentials
-	var oaperson user.OauthData
-	json.Unmarshal(file, &cred)
-	platform, endpoint := getData("google", cred)
-	conf := oauth2.Config{
+func getOauthConfig(credentials interface{}, provider string) oauth2.Config {
+	platform, endpoint := getData(provider, credentials)
+	return oauth2.Config{
 		ClientID:     platform.Cid,
 		ClientSecret: platform.Csecret,
 		RedirectURL:  platform.Redirect,
 		Scopes:       platform.Scopes,
 		Endpoint:     endpoint,
 	}
-	tok, err := conf.Exchange(oauth2.NoContext, c.Query("code"))
-	if err != nil {
-		c.Redirect(302, user.ServerAdress)
-		return
-	}
-	client := conf.Client(oauth2.NoContext, tok)
-	resp, err := client.Get("https://www.googleapis.com/oauth2/v3/userinfo")
-	if err != nil {
-		c.Redirect(302, user.ServerAdress)
-		return
-	}
-	defer resp.Body.Close()
-	data, _ := ioutil.ReadAll(resp.Body)
-	json.Unmarshal(data, &oaperson)
-	person, err := oaperson.OauthLogin(database)
-	if err != nil {
-		c.Redirect(302, user.ServerAdress)
-		return
-	}
-	c.JSON(200, person)
 }
 
-func getData(provider string, cred Credentials) (platform Platform, endpoint oauth2.Endpoint) {
+func OauthAuthorize(c *gin.Context) {
+	credentials, _ := c.Get("credentials")
+	config := getOauthConfig(credentials, c.Param("provider"))
+	url := config.AuthCodeURL(generateSaveToken(c))
+	c.Redirect(302, url)
+}
+
+func OauthLogin(c *gin.Context) {
+	credentialsFile, _ := c.Get("credentials")
+	db, _ := c.Get("db")
+	database := db.(*gorm.DB)
+	config := getOauthConfig(credentialsFile, c.Param("provider"))
+	platform, _ := getData(c.Param("provider"), credentialsFile)
+	code := c.Query("code")
+	token, err := config.Exchange(oauth2.NoContext, code)
+	if err != nil {
+		c.Redirect(302, user.ServerAdress+"/oauth/null")
+		return
+	}
+	client := config.Client(oauth2.NoContext, token)
+	response, err := client.Get(platform.GetJwtAddress)
+	if err != nil {
+		c.Redirect(302, user.ServerAdress+"/oauth/null")
+		return
+	}
+	defer response.Body.Close()
+	data, _ := ioutil.ReadAll(response.Body)
+	person := user.OauthData{}
+	json.Unmarshal(data, &person)
+	apiUser, err := person.OauthLogin(database)
+	if err != nil {
+		c.Redirect(302, user.ServerAdress+"/oauth/null")
+		return
+	}
+	jwtToken, err := user.CreateJWTToken(jwt.MapClaims{
+		"userid":      apiUser.UserID,
+		"permissions": apiUser.Permissions,
+		"time":        time.Now().Unix(),
+	})
+	if err != nil {
+		c.Redirect(302, user.ServerAdress+"/oauth/null")
+		return
+	}
+	c.Redirect(302, user.ServerAdress+"oauth/"+jwtToken)
+
+}
+
+func getData(provider string, credentialsFile interface{}) (platform Platform, endpoint oauth2.Endpoint) {
+	file := credentialsFile.([]byte)
+	var credentials Credentials
+	json.Unmarshal(file, &credentials)
 	switch provider {
 	case "google":
-		platform = cred.Google
+		platform = credentials.Google
 		endpoint = google.Endpoint
 	}
 	return platform, endpoint
+}
+
+func generateSaveToken(c *gin.Context) string {
+	token := make([]byte, 32)
+	rand.Read(token)
+	state := base64.StdEncoding.EncodeToString(token)
+	session := sessions.Default(c)
+	session.Set("state", state)
+	session.Save()
+	return state
 }

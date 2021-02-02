@@ -16,6 +16,8 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-contrib/cors"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
@@ -34,6 +36,14 @@ func main() {
 	config.AllowAllOrigins = true
 	config.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization"}
 	server.Use(cors.New(config))
+
+	//session
+	store := cookie.NewStore([]byte("ThisIsGoLanguage"))
+	store.Options(sessions.Options{
+		Path:   "/",
+		MaxAge: 1800,
+	})
+	server.Use(sessions.Sessions("go_session_id", store))
 
 	//add database
 	server.Use(dbMiddleware(database))
@@ -70,7 +80,8 @@ func main() {
 	userGroup := server.Group("user")
 	{
 		userGroup.POST("login", loginandregister.Login)
-		userGroup.GET("oauth/login", addConfig("credentials", file), loginandregister.OauthLogin)
+		userGroup.GET("oauth/login/:provider", addConfig("credentials", file), loginandregister.OauthLogin)
+		userGroup.GET("oauth/authorize/:provider", addConfig("credentials", file), loginandregister.OauthAuthorize)
 		userGroup.POST("register", loginandregister.Register)
 		userGroup.GET("activation/:jwt", user.Activation)
 	}
