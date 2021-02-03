@@ -159,6 +159,7 @@ func OauthLogin(c *gin.Context) {
 		return
 	}
 	jwtToken, err := user.CreateJWTToken(jwt.MapClaims{
+		"email":       apiUser.Email,
 		"userid":      apiUser.UserID,
 		"permissions": apiUser.Permissions,
 		"time":        time.Now().Unix(),
