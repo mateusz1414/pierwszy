@@ -167,7 +167,7 @@ func OauthLogin(c *gin.Context) {
 		c.Redirect(302, user.ServerAdress+"/oauth/null")
 		return
 	}
-	c.Redirect(302, user.ServerAdress+"oauth/"+jwtToken)
+	c.Redirect(302, user.ServerAdress+"oautha/"+jwtToken)
 
 }
 
